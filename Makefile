@@ -5,3 +5,6 @@ codesign-vm:
 	codesign --entitlements ./cmd/vm/vm.entitlements -s - ./bin/vm
 
 build-and-codesign-vm: build-vm codesign-vm
+
+format:
+	
