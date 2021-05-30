@@ -2,19 +2,13 @@
 
 void *VZDiskImageStorageDeviceAttachment_init(const char *diskImageURL,
                                               bool readOnly, void **error) {
-  VZDiskImageStorageDeviceAttachment *attachment;
+  NSString *string = [NSString stringWithUTF8String:diskImageURL];
+  NSURL *url = [NSURL fileURLWithPath:string];
 
-  @autoreleasepool {
-    NSString *string = [NSString stringWithUTF8String:diskImageURL];
-    NSURL *url = [NSURL fileURLWithPath:string];
-
-    attachment = [[VZDiskImageStorageDeviceAttachment alloc]
-        initWithURL:url
-           readOnly:readOnly
-              error:(NSError *_Nullable *_Nullable)error];
-  }
-
-  return attachment;
+  return [[VZDiskImageStorageDeviceAttachment alloc]
+      initWithURL:url
+         readOnly:readOnly
+            error:(NSError *_Nullable *)error];
 }
 
 void *VZVirtioBlockDeviceConfiguration_init(void *attachment) {

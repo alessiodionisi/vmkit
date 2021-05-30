@@ -1,24 +1,16 @@
 #import "boot_loader.h"
 
 void *VZLinuxBootLoader_init(const char *kernelURL) {
-  VZLinuxBootLoader *bootLoader;
+  NSString *string = [NSString stringWithUTF8String:kernelURL];
+  NSURL *url = [NSURL fileURLWithPath:string];
 
-  @autoreleasepool {
-    NSString *string = [NSString stringWithUTF8String:kernelURL];
-    NSURL *url = [NSURL fileURLWithPath:string];
-
-    bootLoader = [[VZLinuxBootLoader alloc] initWithKernelURL:url];
-  }
-
-  return bootLoader;
+  return [[VZLinuxBootLoader alloc] initWithKernelURL:url];
 }
 
 void VZLinuxBootLoader_setCommandLine(void *ptr, const char *commandLine) {
-  @autoreleasepool {
-    NSString *string = [NSString stringWithUTF8String:commandLine];
+  NSString *string = [NSString stringWithUTF8String:commandLine];
 
-    [(VZLinuxBootLoader *)ptr setCommandLine:string];
-  }
+  [(VZLinuxBootLoader *)ptr setCommandLine:string];
 }
 
 const char *VZLinuxBootLoader_commandLine(void *ptr) {
@@ -27,10 +19,8 @@ const char *VZLinuxBootLoader_commandLine(void *ptr) {
 
 void VZLinuxBootLoader_setInitialRamdiskURL(void *ptr,
                                             const char *initialRamdiskURL) {
-  @autoreleasepool {
-    NSString *string = [NSString stringWithUTF8String:initialRamdiskURL];
-    NSURL *url = [NSURL fileURLWithPath:string];
+  NSString *string = [NSString stringWithUTF8String:initialRamdiskURL];
+  NSURL *url = [NSURL fileURLWithPath:string];
 
-    [(VZLinuxBootLoader *)ptr setInitialRamdiskURL:url];
-  }
+  [(VZLinuxBootLoader *)ptr setInitialRamdiskURL:url];
 }

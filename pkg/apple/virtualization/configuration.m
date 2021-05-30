@@ -29,7 +29,7 @@ unsigned long long VZVirtualMachineConfiguration_memorySize(void *ptr) {
 
 bool VZVirtualMachineConfiguration_validateWithError(void *ptr, void **error) {
   return [(VZVirtualMachineConfiguration *)ptr
-      validateWithError:(NSError *_Nullable *_Nullable)error];
+      validateWithError:(NSError *_Nullable *)error];
 }
 
 void VZVirtualMachineConfiguration_setSerialPorts(void *ptr,

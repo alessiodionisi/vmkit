@@ -9,18 +9,12 @@ void *VZVirtioConsoleDeviceSerialPortConfiguration_init(void *attachment) {
 }
 
 void *VZFileHandleSerialPortAttachment_init(int read, int write) {
-  VZFileHandleSerialPortAttachment *attachment;
+  NSFileHandle *readFileHandle =
+      [[NSFileHandle alloc] initWithFileDescriptor:read];
+  NSFileHandle *writeFileHandle =
+      [[NSFileHandle alloc] initWithFileDescriptor:write];
 
-  @autoreleasepool {
-    NSFileHandle *readFileHandle =
-        [[NSFileHandle alloc] initWithFileDescriptor:read];
-    NSFileHandle *writeFileHandle =
-        [[NSFileHandle alloc] initWithFileDescriptor:write];
-
-    attachment = [[VZFileHandleSerialPortAttachment alloc]
-        initWithFileHandleForReading:readFileHandle
-                fileHandleForWriting:writeFileHandle];
-  }
-
-  return attachment;
+  return [[VZFileHandleSerialPortAttachment alloc]
+      initWithFileHandleForReading:readFileHandle
+              fileHandleForWriting:writeFileHandle];
 }

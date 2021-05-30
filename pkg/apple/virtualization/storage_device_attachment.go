@@ -32,19 +32,19 @@ func NewDiskImageStorageDeviceAttachment(
 	diskImageURL string,
 	readOnly bool,
 ) (*DiskImageStorageDeviceAttachment, error) {
-	var errPtr unsafe.Pointer
+	var err unsafe.Pointer
 
-	ptr := C.VZDiskImageStorageDeviceAttachment_init(
-		C.CString(diskImageURL),
-		C.bool(readOnly),
-		&errPtr,
-	)
-
-	if errPtr != nil {
-		return nil, errors.New(C.GoString(C.NSError_localizedDescription(errPtr)))
+	attachment := &DiskImageStorageDeviceAttachment{
+		ptr: C.VZDiskImageStorageDeviceAttachment_init(
+			C.CString(diskImageURL),
+			C.bool(readOnly),
+			&err,
+		),
 	}
 
-	return &DiskImageStorageDeviceAttachment{
-		ptr: ptr,
-	}, nil
+	if err != nil {
+		return nil, errors.New(C.GoString(C.NSError_localizedDescription(err)))
+	}
+
+	return attachment, nil
 }

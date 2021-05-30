@@ -1,10 +1,10 @@
-build-vm:
-	go build -o ./bin/vm ./cmd/vm
+build-vmkit:
+	go build -o ./bin/vmkit ./cmd/vmkit
 
-codesign-vm:
-	codesign --entitlements ./cmd/vm/vm.entitlements -s - ./bin/vm
+build-vmkit-vm:
+	go build -o ./bin/vmkit-vm ./cmd/vm
 
-build-and-codesign-vm: build-vm codesign-vm
+codesign-vmkit-vm:
+	codesign --entitlements ./res/vmkit.entitlements -s - ./bin/vmkit-vm
 
-format:
-	
+build-and-codesign-all: build-vmkit build-vmkit-vm codesign-vmkit-vm

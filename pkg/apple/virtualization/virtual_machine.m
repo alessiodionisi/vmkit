@@ -16,10 +16,68 @@ bool VZVirtualMachine_canStart(void *ptr, void *queue) {
   return canStart;
 }
 
-void VZVirtualMachine_startWithCompletionHandler(void *ptr, void *queue) {
-  dispatch_sync((dispatch_queue_t)queue, ^{
-    [(VZVirtualMachine *)ptr startWithCompletionHandler:^(NSError *error){
+bool VZVirtualMachine_canPause(void *ptr, void *queue) {
+  __block bool canPause;
 
+  dispatch_sync((dispatch_queue_t)queue, ^{
+    canPause = [(VZVirtualMachine *)ptr canPause];
+  });
+
+  return canPause;
+}
+
+bool VZVirtualMachine_canResume(void *ptr, void *queue) {
+  __block bool canResume;
+
+  dispatch_sync((dispatch_queue_t)queue, ^{
+    canResume = [(VZVirtualMachine *)ptr canResume];
+  });
+
+  return canResume;
+}
+
+bool VZVirtualMachine_canRequestStop(void *ptr, void *queue) {
+  __block bool canRequestStop;
+
+  dispatch_sync((dispatch_queue_t)queue, ^{
+    canRequestStop = [(VZVirtualMachine *)ptr canRequestStop];
+  });
+
+  return canRequestStop;
+}
+
+int VZVirtualMachine_state(void *ptr, void *queue) {
+  __block int state;
+
+  dispatch_sync((dispatch_queue_t)queue, ^{
+    state = [(VZVirtualMachine *)ptr state];
+  });
+
+  return state;
+}
+
+void VZVirtualMachine_start(void *ptr, void *queue) {
+  dispatch_sync((dispatch_queue_t)queue, ^{
+    [(VZVirtualMachine *)ptr startWithCompletionHandler:^(NSError *error) {
+      NSLog(@"%@", error);
     }];
   });
 }
+
+void VZVirtualMachine_pause(void *ptr, void *queue) {
+  dispatch_sync((dispatch_queue_t)queue, ^{
+    [(VZVirtualMachine *)ptr pauseWithCompletionHandler:^(NSError *error) {
+      NSLog(@"%@", error);
+    }];
+  });
+}
+
+void VZVirtualMachine_resume(void *ptr, void *queue) {
+  dispatch_sync((dispatch_queue_t)queue, ^{
+    [(VZVirtualMachine *)ptr resumeWithCompletionHandler:^(NSError *error) {
+      NSLog(@"%@", error);
+    }];
+  });
+}
+
+bool VZVirtualMachine_isSupported() { return [VZVirtualMachine isSupported]; }
