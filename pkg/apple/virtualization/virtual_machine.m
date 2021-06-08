@@ -1,4 +1,5 @@
 #import "virtual_machine.h"
+#import "_cgo_export.h"
 
 void *VZVirtualMachine_init(void *configuration, void *queue) {
   return [[VZVirtualMachine alloc]
@@ -56,11 +57,12 @@ int VZVirtualMachine_state(void *ptr, void *queue) {
   return state;
 }
 
-void VZVirtualMachine_start(void *ptr, void *queue) {
+void VZVirtualMachine_start(void *ptr, void *queue, const char *handlerID) {
   dispatch_sync((dispatch_queue_t)queue, ^{
-    [(VZVirtualMachine *)ptr startWithCompletionHandler:^(NSError *error) {
-      NSLog(@"%@", error);
-    }];
+    [(VZVirtualMachine *)ptr
+        startWithCompletionHandler:Block_copy(^(NSError *error) {
+          startErrorHandler(error, (char *)handlerID);
+        })];
   });
 }
 

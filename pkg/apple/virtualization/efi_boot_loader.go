@@ -1,7 +1,7 @@
 package virtualization
 
 /*
-#include "boot_loader_private.h"
+#include "efi_boot_loader.h"
 #include "foundation.h"
 */
 import "C"

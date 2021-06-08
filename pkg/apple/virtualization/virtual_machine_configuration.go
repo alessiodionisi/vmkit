@@ -1,7 +1,7 @@
 package virtualization
 
 /*
-#include "configuration.h"
+#include "virtual_machine_configuration.h"
 #include "foundation.h"
 */
 import "C"
@@ -84,6 +84,16 @@ func (c *VirtualMachineConfiguration) SetNetworkDevices(networkDevices []Network
 	}
 
 	C.VZVirtualMachineConfiguration_setNetworkDevices(c.ptr, networkDevicesArray)
+}
+
+// SetEntropyDevices sets the array of randomization devices that you expose to the guest operating system.
+func (c *VirtualMachineConfiguration) SetEntropyDevices(entropyDevices []NetworkDeviceConfiguration) {
+	entropyDevicesArray := C.NSMutableArray_arrayWithCapacity(C.ulong(len(entropyDevices)))
+	for _, nd := range entropyDevices {
+		C.NSMutableArray_addObject(entropyDevicesArray, nd.Pointer())
+	}
+
+	C.VZVirtualMachineConfiguration_setEntropyDevices(c.ptr, entropyDevicesArray)
 }
 
 // MinimumAllowedCPUCount returns the minimum number of CPUs you may configure for the virtual machine.

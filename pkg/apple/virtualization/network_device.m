@@ -8,6 +8,11 @@ void *VZVirtioNetworkDeviceConfiguration_init(void *attachment) {
   return configuration;
 }
 
+void VZVirtioNetworkDeviceConfiguration_setMACAddress(void *ptr,
+                                                      void *macAddress) {
+  [(VZVirtioNetworkDeviceConfiguration *)ptr setMACAddress:macAddress];
+}
+
 void *VZNATNetworkDeviceAttachment_init() {
   return [[VZNATNetworkDeviceAttachment alloc] init];
 }

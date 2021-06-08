@@ -1,6 +1,12 @@
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"errors"
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+)
 
 func newListCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -10,6 +16,22 @@ func newListCommand() *cobra.Command {
 			"ls",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			userHomeDir, err := os.UserHomeDir()
+			if err != nil {
+				return err
+			}
+
+			vmsDir := fmt.Sprintf("%s/.vmkit/vms", userHomeDir)
+
+			_, err = os.Stat(vmsDir)
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					return nil
+				}
+
+				return err
+			}
+
 			return nil
 		},
 	}

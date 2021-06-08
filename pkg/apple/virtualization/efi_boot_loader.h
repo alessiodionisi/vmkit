@@ -1,5 +1,5 @@
-#ifndef boot_loader_private_h
-#define boot_loader_private_h
+#ifndef efi_boot_loader_h
+#define efi_boot_loader_h
 
 #import <Virtualization/Virtualization.h>
 
@@ -13,4 +13,4 @@ void *VZEFIBootLoader_init();
 void VZEFIBootLoader_setEfiURL(void *ptr, const char *efiURL);
 void VZEFIBootLoader_setVariableStore(void *ptr, void *variableStore);
 
-#endif /* boot_loader_private_h */
+#endif /* efi_boot_loader_h */

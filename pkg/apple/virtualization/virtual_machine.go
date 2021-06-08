@@ -6,7 +6,10 @@ package virtualization
 */
 import "C"
 import (
+	"errors"
 	"unsafe"
+
+	"github.com/rs/xid"
 )
 
 type VirtualMachineState int
@@ -31,6 +34,10 @@ func (s VirtualMachineState) String() string {
 		return ""
 	}
 }
+
+var (
+	errorHandlers = map[string]func(err error){}
+)
 
 const (
 	VirtualMachineStateStopped VirtualMachineState = iota
@@ -79,18 +86,32 @@ func (m *VirtualMachine) State() VirtualMachineState {
 }
 
 // Start the virtual machine.
-func (m *VirtualMachine) Start() {
-	C.VZVirtualMachine_start(m.ptr, m.queuePtr)
+func (m *VirtualMachine) Start() error {
+	errCh := make(chan error, 1)
+	handlerID := xid.New().String()
+
+	errorHandlers[handlerID] = func(err error) {
+		errCh <- err
+	}
+	defer delete(errorHandlers, handlerID)
+
+	C.VZVirtualMachine_start(m.ptr, m.queuePtr, C.CString(handlerID))
+
+	return <-errCh
 }
 
 // Pause a running virtual machine.
-func (m *VirtualMachine) Pause() {
+func (m *VirtualMachine) Pause() error {
 	C.VZVirtualMachine_pause(m.ptr, m.queuePtr)
+
+	return nil
 }
 
 // Resume a virtual machine.
-func (m *VirtualMachine) Resume() {
+func (m *VirtualMachine) Resume() error {
 	C.VZVirtualMachine_resume(m.ptr, m.queuePtr)
+
+	return nil
 }
 
 // NewVirtualMachine creates the virtual machine and configures it with the specified data.
@@ -102,5 +123,16 @@ func NewVirtualMachine(configuration *VirtualMachineConfiguration) *VirtualMachi
 	return &VirtualMachine{
 		ptr:      C.VZVirtualMachine_init(configuration.Pointer(), queue),
 		queuePtr: queue,
+	}
+}
+
+//export startErrorHandler
+func startErrorHandler(err unsafe.Pointer, handlerID *C.char) {
+	hID := C.GoString(handlerID)
+
+	if err != nil {
+		errorHandlers[hID](errors.New(C.GoString(C.NSError_localizedDescription(err))))
+	} else {
+		errorHandlers[hID](nil)
 	}
 }

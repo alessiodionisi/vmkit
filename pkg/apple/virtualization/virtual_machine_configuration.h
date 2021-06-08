@@ -1,5 +1,5 @@
-#ifndef configuration_h
-#define configuration_h
+#ifndef virtual_machine_configuration_h
+#define virtual_machine_configuration_h
 
 #import <Foundation/Foundation.h>
 #import <Virtualization/Virtualization.h>
@@ -18,5 +18,7 @@ void VZVirtualMachineConfiguration_setStorageDevices(void *ptr,
                                                      void *storageDevices);
 void VZVirtualMachineConfiguration_setNetworkDevices(void *ptr,
                                                      void *networkDevices);
+void VZVirtualMachineConfiguration_setEntropyDevices(void *ptr,
+                                                     void *entropyDevices);
 
-#endif /* configuration_h */
+#endif /* virtual_machine_configuration_h */

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -12,24 +13,39 @@ import (
 
 func main() {
 	cmd := &cobra.Command{
-		Use:  "vmkit-vm",
-		RunE: run,
+		Use:   "avfvm",
+		Short: "avfvm - Apple Virtualization.framework Virtual Machine",
+		RunE:  run,
+		Example: `
+  LinuxKit:
+    avfvm --linux-kernel ./linuxkit-kernel-unarchived \
+      --linux-initial-ramdisk ./linuxkit-initrd.img \
+      --linux-command-line "console=hvc0"
+
+  Alpine Linux:
+    avfvm --linux-kernel ./vmlinuz-virt-unarchived \
+      --linux-initial-ramdisk ./initramfs-virt \
+      --linux-command-line "console=hvc0" \
+      --disk-image ./alpine-virt-3.13.5-aarch64.iso`,
 	}
 
 	// virtual machine
-	cmd.Flags().Uint64("cpu-count", 1, "")
-	cmd.Flags().Uint64("memory-size", 1073741824, "")
+	cmd.Flags().Uint64("cpu-count", 1, "number of cpu(s) you make available to the guest operating system")
+	cmd.Flags().Uint64("memory-size", 1073741824, "amount of physical memory the guest operating system sees")
 
 	// linux boot loader
-	cmd.Flags().String("linux-kernel", "", "")
-	cmd.Flags().String("linux-initial-ramdisk", "", "")
-	cmd.Flags().String("linux-command-line", "", "")
+	cmd.Flags().String("linux-kernel", "", "location of the kernel")
+	cmd.Flags().String("linux-initial-ramdisk", "", "location of an optional ram disk, which the boot loader maps into memory before it boots the kernel")
+	cmd.Flags().String("linux-command-line", "", "command-line parameters to pass to the kernel at boot time")
 
 	// efi boot loader
-	cmd.Flags().String("efi-url", "", "")
-	cmd.Flags().String("efi-variable-store-url", "", "")
+	cmd.Flags().String("efi", "", "[EXPERIMENTAL] location of the efi image")
+	cmd.Flags().String("efi-variable-store", "", "[EXPERIMENTAL] location of the efi variable store")
 
-	cmd.Flags().StringArray("disk-image", []string{}, "")
+	// disk images
+	cmd.Flags().StringArray("disk-image", []string{}, "location of the disk image(s)")
+
+	cmd.Flags().String("network", "nat", "type of network interface (nat)")
 
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
@@ -67,12 +83,17 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	efiURL, err := cmd.Flags().GetString("efi-url")
+	efi, err := cmd.Flags().GetString("efi")
 	if err != nil {
 		return err
 	}
 
-	efiVariableStoreURL, err := cmd.Flags().GetString("efi-variable-store-url")
+	efiVariableStore, err := cmd.Flags().GetString("efi-variable-store")
+	if err != nil {
+		return err
+	}
+
+	network, err := cmd.Flags().GetString("network")
 	if err != nil {
 		return err
 	}
@@ -84,7 +105,8 @@ func run(cmd *cobra.Command, args []string) error {
 	// create the virtual machine configuration
 	vmConfig := virtualization.NewVirtualMachineConfiguration()
 
-	// create the boot loader configuration
+	// == BOOT LOADER
+
 	switch {
 	// linux boot loader
 	case linuxKernel != "":
@@ -115,34 +137,36 @@ func run(cmd *cobra.Command, args []string) error {
 		vmConfig.SetBootLoader(linuxBootLoader)
 
 	// efi boot loader
-	case efiURL != "":
+	case efi != "":
 		log.Printf(
 			`boot loader: configuring efi url "%s"`,
-			efiURL,
+			efi,
 		)
 
 		efiBootLoader := virtualization.NewEFIBootLoader()
-		efiBootLoader.SetEFIURL(efiURL)
+		efiBootLoader.SetEFIURL(efi)
 
-		if efiVariableStoreURL != "" {
+		if efiVariableStore != "" {
 			log.Printf(
 				`boot loader: configuring efi variable store "%s"`,
-				efiVariableStoreURL,
+				efiVariableStore,
 			)
 
-			efiVariableStore, err := virtualization.NewEFIVariableStore(efiVariableStoreURL)
+			efiVarStore, err := virtualization.NewEFIVariableStore(efiVariableStore)
 			if err != nil {
-				return err
+				return fmt.Errorf("boot loader error: %w", err)
 			}
 
-			efiBootLoader.SetVariableStore(efiVariableStore)
+			efiBootLoader.SetVariableStore(efiVarStore)
 		}
 
 		vmConfig.SetBootLoader(efiBootLoader)
 
 	default:
-		return errors.New("boot loader: invalid configuration")
+		return errors.New("boot loader error: invalid configuration")
 	}
+
+	// == SERIAL PORT
 
 	// create the serial port configuration
 	log.Println("serial port: configuring with standard input and standard output")
@@ -156,6 +180,8 @@ func run(cmd *cobra.Command, args []string) error {
 	vmConfig.SetSerialPorts([]virtualization.SerialPortConfiguration{
 		serialPortConfiguration,
 	})
+
+	// == STORAGE
 
 	// create an empty storage devices slice
 	storageDevices := make([]virtualization.StorageDeviceConfiguration, 0)
@@ -172,7 +198,7 @@ func run(cmd *cobra.Command, args []string) error {
 			false,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("disk image error: %w", err)
 		}
 
 		storageDevices = append(storageDevices, virtualization.NewVirtioBlockDeviceConfiguration(attachment))
@@ -180,15 +206,37 @@ func run(cmd *cobra.Command, args []string) error {
 
 	vmConfig.SetStorageDevices(storageDevices)
 
-	// create the network configuration
-	log.Println("network: configuring nat")
+	// == NETWORK
 
-	networkAttachment := virtualization.NewNATNetworkDeviceAttachment()
-	networkConfiguration := virtualization.NewVirtioNetworkDeviceConfiguration(networkAttachment)
+	// create an empty network devices slice
+	networkDevices := make([]virtualization.NetworkDeviceConfiguration, 0)
 
-	vmConfig.SetNetworkDevices([]virtualization.NetworkDeviceConfiguration{
-		networkConfiguration,
+	// configure the network
+	switch network {
+	case "nat":
+		log.Println("network: configuring nat")
+
+		networkDevices = append(
+			networkDevices,
+			virtualization.NewVirtioNetworkDeviceConfiguration(
+				virtualization.NewNATNetworkDeviceAttachment(),
+			),
+		)
+	}
+
+	vmConfig.SetNetworkDevices(networkDevices)
+
+	// == RANDOMIZATION
+
+	// Create a new entropy device
+	log.Println("entropy device: configuring")
+	entropyDevice := virtualization.NewVirtioEntropyDeviceConfiguration()
+
+	vmConfig.SetEntropyDevices([]virtualization.NetworkDeviceConfiguration{
+		entropyDevice,
 	})
+
+	// == VIRTUAL MACHINE
 
 	// configure the virtual machine
 	log.Printf(
@@ -202,7 +250,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// validate the configuration
 	if err := vmConfig.Validate(); err != nil {
-		return err
+		return fmt.Errorf("validate error: %w", err)
 	}
 
 	// create the virtual machine
@@ -210,15 +258,17 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// start the virtual machine
 	log.Println("virtual machine: starting")
-	vm.Start()
+	if err := vm.Start(); err != nil {
+		return fmt.Errorf("start error: %w", err)
+	}
 
 	for {
-		log.Println("================")
-		log.Printf("state: %v", vm.State().String())
-		log.Printf("canStart: %v", vm.CanStart())
-		log.Printf("canPause: %v", vm.CanPause())
-		log.Printf("canResume: %v", vm.CanResume())
-		log.Printf("canRequestStop: %v", vm.CanRequestStop())
+		// log.Println("================")
+		// log.Printf("state: %v", vm.State().String())
+		// log.Printf("canStart: %v", vm.CanStart())
+		// log.Printf("canPause: %v", vm.CanPause())
+		// log.Printf("canResume: %v", vm.CanResume())
+		// log.Printf("canRequestStop: %v", vm.CanRequestStop())
 
 		time.Sleep(5 * time.Second)
 	}

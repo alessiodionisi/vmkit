@@ -1,4 +1,4 @@
-#import "configuration.h"
+#import "virtual_machine_configuration.h"
 
 void *VZVirtualMachineConfiguration_init() {
   return [[VZVirtualMachineConfiguration alloc] init];
@@ -48,4 +48,10 @@ void VZVirtualMachineConfiguration_setNetworkDevices(void *ptr,
                                                      void *networkDevices) {
   [(VZVirtualMachineConfiguration *)ptr
       setNetworkDevices:[(NSMutableArray *)networkDevices copy]];
+}
+
+void VZVirtualMachineConfiguration_setEntropyDevices(void *ptr,
+                                                     void *entropyDevices) {
+  [(VZVirtualMachineConfiguration *)ptr
+      setEntropyDevices:[(NSMutableArray *)entropyDevices copy]];
 }

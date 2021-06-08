@@ -1,5 +1,5 @@
-#ifndef boot_loader_h
-#define boot_loader_h
+#ifndef linux_boot_loader_h
+#define linux_boot_loader_h
 
 #import <Foundation/Foundation.h>
 #import <Virtualization/Virtualization.h>
@@ -10,4 +10,4 @@ const char *VZLinuxBootLoader_commandLine(void *ptr);
 void VZLinuxBootLoader_setInitialRamdiskURL(void *ptr,
                                             const char *initialRamdiskURL);
 
-#endif /* boot_loader_h */
+#endif /* linux_boot_loader_h */

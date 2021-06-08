@@ -1,16 +1,12 @@
 package virtualization
 
 /*
-#include "boot_loader.h"
+#include "linux_boot_loader.h"
 */
 import "C"
 import (
 	"unsafe"
 )
-
-type BootLoader interface {
-	Pointer() unsafe.Pointer
-}
 
 // LinuxBootLoader specify the location of the Linux kernel that serves as the guest operating system.
 type LinuxBootLoader struct {

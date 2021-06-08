@@ -1,10 +1,10 @@
 build-vmkit:
 	go build -o ./bin/vmkit ./cmd/vmkit
 
-build-vmkit-vm:
-	go build -o ./bin/vmkit-vm ./cmd/vm
+build-avfvm:
+	go build -o ./bin/avfvm ./cmd/avfvm
 
-codesign-vmkit-vm:
-	codesign --entitlements ./res/vmkit.entitlements -s - ./bin/vmkit-vm
+codesign-avfvm:
+	codesign --entitlements ./res/avfvm.entitlements -s - ./bin/avfvm
 
-build-and-codesign-all: build-vmkit build-vmkit-vm codesign-vmkit-vm
+build-and-codesign-all: build-vmkit build-avfvm codesign-avfvm

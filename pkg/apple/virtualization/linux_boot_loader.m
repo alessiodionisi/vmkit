@@ -1,4 +1,4 @@
-#import "boot_loader.h"
+#import "linux_boot_loader.h"
 
 void *VZLinuxBootLoader_init(const char *kernelURL) {
   NSString *string = [NSString stringWithUTF8String:kernelURL];

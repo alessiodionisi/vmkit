@@ -1,4 +1,4 @@
-#import "boot_loader_private.h"
+#import "efi_boot_loader.h"
 
 void *VZEFIVariableStore_init(const char *url, void **error) {
   NSString *string = [NSString stringWithUTF8String:url];
