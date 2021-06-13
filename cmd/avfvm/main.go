@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/adnsio/vmkit/pkg/apple/virtualization"
@@ -14,19 +15,8 @@ import (
 func main() {
 	cmd := &cobra.Command{
 		Use:   "avfvm",
-		Short: "avfvm - Apple Virtualization.framework Virtual Machine",
+		Short: "Apple Virtualization.framework Virtual Machine",
 		RunE:  run,
-		Example: `
-  LinuxKit:
-    avfvm --linux-kernel ./linuxkit-kernel-unarchived \
-      --linux-initial-ramdisk ./linuxkit-initrd.img \
-      --linux-command-line "console=hvc0"
-
-  Alpine Linux:
-    avfvm --linux-kernel ./vmlinuz-virt-unarchived \
-      --linux-initial-ramdisk ./initramfs-virt \
-      --linux-command-line "console=hvc0" \
-      --disk-image ./alpine-virt-3.13.5-aarch64.iso`,
 	}
 
 	// virtual machine
@@ -43,9 +33,9 @@ func main() {
 	cmd.Flags().String("efi-variable-store", "", "[EXPERIMENTAL] location of the efi variable store")
 
 	// disk images
-	cmd.Flags().StringArray("disk-image", []string{}, "location of the disk image(s)")
+	cmd.Flags().StringArray("disk-image", []string{}, "disk image configuration(s)")
 
-	cmd.Flags().String("network", "nat", "type of network interface (nat)")
+	cmd.Flags().StringArray("network", []string{"nat"}, "network interface configuration(s)\n  nat[,macAddress=mac]")
 
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
@@ -93,7 +83,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	network, err := cmd.Flags().GetString("network")
+	networks, err := cmd.Flags().GetStringArray("network")
 	if err != nil {
 		return err
 	}
@@ -212,16 +202,33 @@ func run(cmd *cobra.Command, args []string) error {
 	networkDevices := make([]virtualization.NetworkDeviceConfiguration, 0)
 
 	// configure the network
-	switch network {
-	case "nat":
-		log.Println("network: configuring nat")
+	for _, network := range networks {
+		log.Println(network)
+		networkOptions := strings.Split(network, ",")
+		networkType := networkOptions[0]
+		networkOptions = networkOptions[1:]
 
-		networkDevices = append(
-			networkDevices,
-			virtualization.NewVirtioNetworkDeviceConfiguration(
+		switch networkType {
+		case "nat":
+			log.Printf("network: configuring nat with options %s\n", networkOptions)
+
+			networkDevice := virtualization.NewVirtioNetworkDeviceConfiguration(
 				virtualization.NewNATNetworkDeviceAttachment(),
-			),
-		)
+			)
+
+			for _, networkOption := range networkOptions {
+				nameAndValue := strings.Split(networkOption, "=")
+				switch nameAndValue[0] {
+				case "macAddress":
+					networkDevice.SetMACAddress(virtualization.NewMacAddress(nameAndValue[1]))
+				}
+			}
+
+			networkDevices = append(
+				networkDevices,
+				networkDevice,
+			)
+		}
 	}
 
 	vmConfig.SetNetworkDevices(networkDevices)

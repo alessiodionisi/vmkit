@@ -22,7 +22,7 @@ func (c *VirtioNetworkDeviceConfiguration) Pointer() unsafe.Pointer {
 }
 
 // SetMACAddress sets the media access control (MAC) address to assign to the network device.
-func (c *VirtioNetworkDeviceConfiguration) SetMACAddress(macAddress MACAddress) {
+func (c *VirtioNetworkDeviceConfiguration) SetMACAddress(macAddress *MACAddress) {
 	C.VZVirtioNetworkDeviceConfiguration_setMACAddress(c.ptr, macAddress.Pointer())
 }
 

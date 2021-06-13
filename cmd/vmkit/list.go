@@ -1,12 +1,16 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+type listOptions struct {
+	address string
+}
 
 func newListCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -16,20 +20,18 @@ func newListCommand() *cobra.Command {
 			"ls",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			userHomeDir, err := os.UserHomeDir()
+			address, err := cmd.Flags().GetString("address")
 			if err != nil {
 				return err
 			}
 
-			vmsDir := fmt.Sprintf("%s/.vmkit/vms", userHomeDir)
+			opts := &listOptions{
+				address: address,
+			}
 
-			_, err = os.Stat(vmsDir)
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					return nil
-				}
-
-				return err
+			if err := runList(opts); err != nil {
+				fmt.Printf("error: %s\n", err)
+				os.Exit(1)
 			}
 
 			return nil
@@ -37,4 +39,32 @@ func newListCommand() *cobra.Command {
 	}
 
 	return cmd
+}
+
+func runList(opts *listOptions) error {
+	client, err := NewRPCClient(opts.address)
+	if err != nil {
+		return err
+	}
+
+	virtualMachines, err := client.ListVirtualMachines()
+	if err != nil {
+		return err
+	}
+
+	tableRows := make([][]string, len(virtualMachines))
+	for i, vm := range virtualMachines {
+		tableRows[i] = []string{
+			vm.Config.Metadata.Name,
+			strings.Title(string(vm.Status)),
+		}
+	}
+
+	writeTable(&writeTableOptions{
+		Writer: os.Stdout,
+		Header: []string{"Name", "Status"},
+		Rows:   tableRows,
+	})
+
+	return nil
 }
