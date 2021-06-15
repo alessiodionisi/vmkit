@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	ErrVirtualMachineNotFound             = errors.New(`virtual machine not found`)
 	ErrVirtualMachineAlreadyRunning       = errors.New(`virtual machine is already running`)
 	ErrVirtualMachineInvalidConfiguration = errors.New(`virtual machine configuration is invalid`)
+	ErrVirtualMachineIsStopped            = errors.New(`virtual machine is stopped`)
+	ErrVirtualMachineNotFound             = errors.New(`virtual machine not found`)
 )
 
 type VirtualMachinesStatus string
@@ -47,6 +48,10 @@ func (v *VirtualMachine) Status() VirtualMachinesStatus {
 }
 
 func (v *VirtualMachine) Logs() (string, error) {
+	if v.Status() == VirtualMachinesStatusStopped {
+		return "", ErrVirtualMachineIsStopped
+	}
+
 	if v.command == nil {
 		return "", nil
 	}
@@ -56,7 +61,11 @@ func (v *VirtualMachine) Logs() (string, error) {
 		return "", err
 	}
 
-	v.readedStdout = append(v.readedStdout, stdoutBytes...)
+	if len(stdoutBytes) == 0 {
+		return string(v.readedStdout), nil
+	}
+
+	v.readedStdout = stdoutBytes
 
 	return string(v.readedStdout), nil
 }

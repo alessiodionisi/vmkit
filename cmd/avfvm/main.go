@@ -203,7 +203,6 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// configure the network
 	for _, network := range networks {
-		log.Println(network)
 		networkOptions := strings.Split(network, ",")
 		networkType := networkOptions[0]
 		networkOptions = networkOptions[1:]
@@ -270,13 +269,11 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	for {
-		// log.Println("================")
-		// log.Printf("state: %v", vm.State().String())
-		// log.Printf("canStart: %v", vm.CanStart())
-		// log.Printf("canPause: %v", vm.CanPause())
-		// log.Printf("canResume: %v", vm.CanResume())
-		// log.Printf("canRequestStop: %v", vm.CanRequestStop())
+		if vm.State() == virtualization.VirtualMachineStateStopped {
+			log.Println("virtual machine: stopped")
+			os.Exit(0)
+		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 }

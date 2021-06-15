@@ -33,12 +33,10 @@ type VirtualMachineV1Alpha1Spec struct {
 }
 
 type VirtualMachineV1Alpha1SpecDisk struct {
-	Path     string `yaml:"path"`
-	ReadOnly bool   `yaml:"readOnly"`
+	Path string `yaml:"path"`
 }
 
 type VirtualMachineV1Alpha1SpecNetwork struct {
-	Type       string `yaml:"type"`
 	MACAddress string `yaml:"macAddress"`
 }
 
@@ -53,8 +51,8 @@ type VirtualMachineV1Alpha1SpecBootLoaderLinux struct {
 }
 
 type VirtualMachineV1Alpha1SpecCloudInit struct {
-	UserData             interface{} `yaml:"userData"`
-	NetworkConfiguration interface{} `yaml:"networkConfiguration"`
+	UserData             *string `yaml:"userData"`
+	NetworkConfiguration *string `yaml:"networkConfiguration"`
 }
 
 func Unmarshal(bytes []byte) (*VirtualMachineV1Alpha1, error) {

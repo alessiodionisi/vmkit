@@ -97,6 +97,13 @@ func runRoot(opts *rootOptions) error {
 		if err != nil {
 			return err
 		}
+	case driver.DriverTypeQEMU:
+		var err error
+
+		drv, err = driver.NewQEMU(opts.qemu)
+		if err != nil {
+			return err
+		}
 	default:
 		return driver.ErrNotSupported
 	}
