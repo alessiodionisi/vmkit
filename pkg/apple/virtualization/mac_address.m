@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify

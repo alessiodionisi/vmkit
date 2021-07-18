@@ -1,5 +1,5 @@
 # VMKit
 
-Virtualization made easy. Supports QEMU and Apple Virtualization.framework.
+Spin up Linux VMs with QEMU and Apple virtualization framework.
 
 # WIP!

@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,31 +20,26 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
 
-type applyOptions struct {
-	file string
+type pullOptions struct {
+	name string
 }
 
-func newApplyCommand() *cobra.Command {
+func newPullCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "apply",
-		Short: "Apply a configuration from file",
-		Example: `  # Apply the configuration in ubuntu.yaml
-  vmkit apply -f ./ubuntu.yaml`,
+		Args:  cobra.ExactArgs(1),
+		Short: "Pull an image",
+		Use:   "pull [image]",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			file, err := cmd.Flags().GetString("file")
-			if err != nil {
-				return err
+			opts := &pullOptions{
+				name: args[0],
 			}
 
-			opts := &applyOptions{
-				file: file,
-			}
-
-			if err := runApply(opts); err != nil {
-				fmt.Printf("error: %s", err)
+			if err := runPull(opts); err != nil {
+				fmt.Printf("error: %s\n", err)
 				os.Exit(1)
 			}
 
@@ -52,11 +47,21 @@ func newApplyCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("file", "f", "", "configuration file path")
-
 	return cmd
 }
 
-func runApply(opts *applyOptions) error {
-	return nil
+func runPull(opts *pullOptions) error {
+	eng, err := engine.New(&engine.NewOptions{
+		Writer: os.Stderr,
+	})
+	if err != nil {
+		return err
+	}
+
+	img := eng.FindImage(opts.name)
+	if img == nil {
+		return fmt.Errorf(`image "%s" not found`, opts.name)
+	}
+
+	return img.Pull()
 }

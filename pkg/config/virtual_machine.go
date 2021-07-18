@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,15 +17,10 @@
 package config
 
 import (
-	"errors"
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v2"
-)
-
-var (
-	ErrInvalidVersion = errors.New("invalid version")
-	ErrInvalidKind    = errors.New("invalid kind")
 )
 
 type VirtualMachineV1Alpha1 struct {
@@ -40,7 +35,7 @@ type VirtualMachineV1Alpha1Metadata struct {
 }
 
 type VirtualMachineV1Alpha1Spec struct {
-	CPU        int                                   `yaml:"cpu"`
+	CPU        uint                                  `yaml:"cpu"`
 	Memory     string                                `yaml:"memory"`
 	BootLoader *VirtualMachineV1Alpha1SpecBootLoader `yaml:"bootLoader"`
 	Disks      []*VirtualMachineV1Alpha1SpecDisk     `yaml:"disks"`
@@ -58,6 +53,11 @@ type VirtualMachineV1Alpha1SpecNetwork struct {
 
 type VirtualMachineV1Alpha1SpecBootLoader struct {
 	Linux *VirtualMachineV1Alpha1SpecBootLoaderLinux `yaml:"linux"`
+	EFI   *VirtualMachineV1Alpha1SpecBootLoaderEFI   `yaml:"efi"`
+}
+
+type VirtualMachineV1Alpha1SpecBootLoaderEFI struct {
+	Path string `yaml:"path"`
 }
 
 type VirtualMachineV1Alpha1SpecBootLoaderLinux struct {
@@ -67,8 +67,46 @@ type VirtualMachineV1Alpha1SpecBootLoaderLinux struct {
 }
 
 type VirtualMachineV1Alpha1SpecCloudInit struct {
-	UserData             *string `yaml:"userData"`
-	NetworkConfiguration *string `yaml:"networkConfiguration"`
+	Enabled              bool   `yaml:"enabled"`
+	UserData             string `yaml:"userData"`
+	NetworkConfiguration string `yaml:"networkConfiguration"`
+}
+
+func (c *VirtualMachineV1Alpha1) Validate() error {
+	// VALIDATE METADATA
+	if c.Metadata == nil {
+		return fmt.Errorf("%w, Metadata is required", ErrInvalidMetadataConfiguration)
+	}
+
+	if c.Metadata != nil && c.Metadata.Name == "" {
+		return fmt.Errorf("%w, Metadata.Name is required", ErrInvalidMetadataConfiguration)
+	}
+
+	// VALIDATE SPEC
+	if c.Spec == nil {
+		return fmt.Errorf("%w, Spec is required", ErrInvalidSpecConfiguration)
+	}
+
+	if c.Spec.CPU == 0 {
+		return fmt.Errorf("%w, Spec.CPU is required", ErrInvalidSpecConfiguration)
+	}
+
+	if c.Spec.Memory == "" {
+		return fmt.Errorf("%w, Spec.Memory is required", ErrInvalidSpecConfiguration)
+	}
+
+	// VALIDATE SPEC BOOTLOADER
+	if c.Spec.BootLoader == nil &&
+		c.Spec.BootLoader.EFI == nil &&
+		c.Spec.BootLoader.Linux == nil {
+		return fmt.Errorf("%w, one of Spec.BootLoader.EFI or Spec.BootLoader.Linux is required", ErrInvalidBootLoaderConfiguration)
+	}
+
+	if c.Spec.BootLoader.EFI != nil && c.Spec.BootLoader.EFI.Path == "" {
+		return fmt.Errorf("%w, Spec.BootLoader.EFI.Path is required", ErrInvalidBootLoaderConfiguration)
+	}
+
+	return nil
 }
 
 func Unmarshal(bytes []byte) (*VirtualMachineV1Alpha1, error) {

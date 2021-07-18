@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,35 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package rpc
+package config
 
-import (
-	"io"
-	"net/rpc"
+import "errors"
 
-	"github.com/adnsio/vmkit/pkg/engine"
+var (
+	ErrInvalidBootLoaderConfiguration = errors.New("invalid boot loader configuration")
+	ErrInvalidKind                    = errors.New("invalid kind")
+	ErrInvalidMetadataConfiguration   = errors.New("invalid metadata configuration")
+	ErrInvalidSpecConfiguration       = errors.New("invalid spec configuration")
+	ErrInvalidVersion                 = errors.New("invalid version")
 )
-
-type NewServerOptions struct {
-	Engine *engine.Engine
-}
-
-type Server struct {
-	server *rpc.Server
-}
-
-func (s *Server) ServeConn(conn io.ReadWriteCloser) {
-	s.server.ServeConn(conn)
-}
-
-func NewServer(opts *NewServerOptions) (*Server, error) {
-	server := rpc.NewServer()
-
-	server.RegisterName("VirtualMachine", &VirtualMachineReceiver{
-		engine: opts.Engine,
-	})
-
-	return &Server{
-		server: server,
-	}, nil
-}

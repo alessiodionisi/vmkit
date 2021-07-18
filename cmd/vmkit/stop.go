@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -16,16 +16,51 @@
 
 package main
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+	"os"
+
+	"github.com/adnsio/vmkit/pkg/engine"
+	"github.com/spf13/cobra"
+)
+
+type stopOptions struct {
+	name string
+}
 
 func newStopCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "stop",
 		Short: "Stop a running virtual machine",
+		Use:   "stop",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts := &stopOptions{
+				name: args[0],
+			}
+
+			if err := runStop(opts); err != nil {
+				fmt.Printf("error: %s\n", err)
+				os.Exit(1)
+			}
+
 			return nil
 		},
 	}
 
 	return cmd
+}
+
+func runStop(opts *stopOptions) error {
+	eng, err := engine.New(&engine.NewOptions{
+		Writer: os.Stderr,
+	})
+	if err != nil {
+		return err
+	}
+
+	vm := eng.FindVirtualMachine(opts.name)
+	if vm == nil {
+		return fmt.Errorf(`virtual machine "%s" not found`, opts.name)
+	}
+
+	return vm.Stop()
 }

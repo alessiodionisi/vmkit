@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
@@ -28,16 +29,90 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type runOptions struct {
+	CPUCount            uint
+	DiskImages          []string
+	EFI                 string
+	EFIVariableStore    string
+	LinuxCommandLine    string
+	LinuxInitialRamdisk string
+	LinuxKernel         string
+	MemorySize          uint
+	Networks            []string
+}
+
 func main() {
 	cmd := &cobra.Command{
 		Use:   "avfvm",
 		Short: "Apple Virtualization.framework Virtual Machine",
-		RunE:  run,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			linuxKernel, err := cmd.Flags().GetString("linux-kernel")
+			if err != nil {
+				return err
+			}
+
+			linuxInitialRamdisk, err := cmd.Flags().GetString("linux-initial-ramdisk")
+			if err != nil {
+				return err
+			}
+
+			linuxCommandLine, err := cmd.Flags().GetString("linux-command-line")
+			if err != nil {
+				return err
+			}
+
+			diskImages, err := cmd.Flags().GetStringArray("disk-image")
+			if err != nil {
+				return err
+			}
+
+			cpuCount, err := cmd.Flags().GetUint("cpu-count")
+			if err != nil {
+				return err
+			}
+
+			memorySize, err := cmd.Flags().GetUint("memory-size")
+			if err != nil {
+				return err
+			}
+
+			efi, err := cmd.Flags().GetString("efi")
+			if err != nil {
+				return err
+			}
+
+			efiVariableStore, err := cmd.Flags().GetString("efi-variable-store")
+			if err != nil {
+				return err
+			}
+
+			networks, err := cmd.Flags().GetStringArray("network")
+			if err != nil {
+				return err
+			}
+
+			if err := run(&runOptions{
+				CPUCount:            cpuCount,
+				DiskImages:          diskImages,
+				EFI:                 efi,
+				EFIVariableStore:    efiVariableStore,
+				LinuxCommandLine:    linuxCommandLine,
+				LinuxInitialRamdisk: linuxInitialRamdisk,
+				LinuxKernel:         linuxKernel,
+				MemorySize:          memorySize,
+				Networks:            networks,
+			}); err != nil {
+				log.Fatal(err)
+				os.Exit(1)
+			}
+
+			return nil
+		},
 	}
 
 	// virtual machine
-	cmd.Flags().Uint64("cpu-count", 1, "number of cpu(s) you make available to the guest operating system")
-	cmd.Flags().Uint64("memory-size", 1073741824, "amount of physical memory the guest operating system sees")
+	cmd.Flags().UintP("cpu-count", "c", 1, "number of cpu(s) you make available to the guest operating system")
+	cmd.Flags().UintP("memory-size", "m", 1073741824, "amount of physical memory the guest operating system sees")
 
 	// linux boot loader
 	cmd.Flags().String("linux-kernel", "", "location of the kernel")
@@ -49,61 +124,17 @@ func main() {
 	cmd.Flags().String("efi-variable-store", "", "[EXPERIMENTAL] location of the efi variable store")
 
 	// disk images
-	cmd.Flags().StringArray("disk-image", []string{}, "disk image configuration(s)")
+	cmd.Flags().StringArrayP("disk-image", "d", []string{}, "disk image configuration(s)")
 
-	cmd.Flags().StringArray("network", []string{"nat"}, "network interface configuration(s)\n  nat[,macAddress=mac]")
+	// networks
+	cmd.Flags().StringArrayP("network", "n", []string{"nat"}, "network interface configuration(s)\n  nat[,macAddress=mac]")
 
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
 
-func run(cmd *cobra.Command, args []string) error {
-	linuxKernel, err := cmd.Flags().GetString("linux-kernel")
-	if err != nil {
-		return err
-	}
-
-	linuxInitialRamdisk, err := cmd.Flags().GetString("linux-initial-ramdisk")
-	if err != nil {
-		return err
-	}
-
-	linuxCommandLine, err := cmd.Flags().GetString("linux-command-line")
-	if err != nil {
-		return err
-	}
-
-	diskImages, err := cmd.Flags().GetStringArray("disk-image")
-	if err != nil {
-		return err
-	}
-
-	cpuCount, err := cmd.Flags().GetUint64("cpu-count")
-	if err != nil {
-		return err
-	}
-
-	memorySize, err := cmd.Flags().GetUint64("memory-size")
-	if err != nil {
-		return err
-	}
-
-	efi, err := cmd.Flags().GetString("efi")
-	if err != nil {
-		return err
-	}
-
-	efiVariableStore, err := cmd.Flags().GetString("efi-variable-store")
-	if err != nil {
-		return err
-	}
-
-	networks, err := cmd.Flags().GetStringArray("network")
-	if err != nil {
-		return err
-	}
-
+func run(opts *runOptions) error {
 	if !virtualization.IsSupported() {
 		return errors.New("virtualization is not supported")
 	}
@@ -115,50 +146,50 @@ func run(cmd *cobra.Command, args []string) error {
 
 	switch {
 	// linux boot loader
-	case linuxKernel != "":
+	case opts.LinuxKernel != "":
 		log.Printf(
 			`boot loader: configuring linux kernel "%s"`,
-			linuxKernel,
+			opts.LinuxKernel,
 		)
 
-		linuxBootLoader := virtualization.NewLinuxBootLoader(linuxKernel)
+		linuxBootLoader := virtualization.NewLinuxBootLoader(opts.LinuxKernel)
 
-		if linuxInitialRamdisk != "" {
+		if opts.LinuxInitialRamdisk != "" {
 			log.Printf(
 				`boot loader: configuring linux initial ram disk "%s"`,
-				linuxInitialRamdisk,
+				opts.LinuxInitialRamdisk,
 			)
-			linuxBootLoader.SetInitialRamdiskURL(linuxInitialRamdisk)
+			linuxBootLoader.SetInitialRamdiskURL(opts.LinuxInitialRamdisk)
 		}
 
-		if linuxCommandLine != "" {
+		if opts.LinuxCommandLine != "" {
 			log.Printf(
 				`boot loader: configuring linux command line "%s"`,
-				linuxCommandLine,
+				opts.LinuxCommandLine,
 			)
 
-			linuxBootLoader.SetCommandLine(linuxCommandLine)
+			linuxBootLoader.SetCommandLine(opts.LinuxCommandLine)
 		}
 
 		vmConfig.SetBootLoader(linuxBootLoader)
 
 	// efi boot loader
-	case efi != "":
+	case opts.EFI != "":
 		log.Printf(
 			`boot loader: configuring efi url "%s"`,
-			efi,
+			opts.EFI,
 		)
 
 		efiBootLoader := virtualization.NewEFIBootLoader()
-		efiBootLoader.SetEFIURL(efi)
+		efiBootLoader.SetEFIURL(opts.EFI)
 
-		if efiVariableStore != "" {
+		if opts.EFIVariableStore != "" {
 			log.Printf(
 				`boot loader: configuring efi variable store "%s"`,
-				efiVariableStore,
+				opts.EFIVariableStore,
 			)
 
-			efiVarStore, err := virtualization.NewEFIVariableStore(efiVariableStore)
+			efiVarStore, err := virtualization.NewEFIVariableStore(opts.EFIVariableStore)
 			if err != nil {
 				return fmt.Errorf("boot loader error: %w", err)
 			}
@@ -193,7 +224,7 @@ func run(cmd *cobra.Command, args []string) error {
 	storageDevices := make([]virtualization.StorageDeviceConfiguration, 0)
 
 	// parse the disk images
-	for _, diskImage := range diskImages {
+	for _, diskImage := range opts.DiskImages {
 		log.Printf(
 			`disk image: configuring "%s"`,
 			diskImage,
@@ -218,7 +249,7 @@ func run(cmd *cobra.Command, args []string) error {
 	networkDevices := make([]virtualization.NetworkDeviceConfiguration, 0)
 
 	// configure the network
-	for _, network := range networks {
+	for _, network := range opts.Networks {
 		networkOptions := strings.Split(network, ",")
 		networkType := networkOptions[0]
 		networkOptions = networkOptions[1:]
@@ -263,12 +294,12 @@ func run(cmd *cobra.Command, args []string) error {
 	// configure the virtual machine
 	log.Printf(
 		"virtual machine: configuring with %d cpu and %d bytes memory size",
-		cpuCount,
-		memorySize,
+		opts.CPUCount,
+		opts.MemorySize,
 	)
 
-	vmConfig.SetCPUCount(cpuCount)
-	vmConfig.SetMemorySize(memorySize)
+	vmConfig.SetCPUCount(uint64(opts.CPUCount))
+	vmConfig.SetMemorySize(uint64(opts.MemorySize))
 
 	// validate the configuration
 	if err := vmConfig.Validate(); err != nil {
@@ -283,6 +314,16 @@ func run(cmd *cobra.Command, args []string) error {
 	if err := vm.Start(); err != nil {
 		return fmt.Errorf("start error: %w", err)
 	}
+
+	go func() {
+		interruptCh := make(chan os.Signal, 1)
+		signal.Notify(interruptCh, os.Interrupt)
+
+		<-interruptCh
+		log.Println("siginal: got an interrupt")
+		// TODO: request VM stop
+		os.Exit(0)
+	}()
 
 	for {
 		if vm.State() == virtualization.VirtualMachineStateStopped {

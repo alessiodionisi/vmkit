@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,31 +17,41 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/adnsio/vmkit/pkg/driver"
+	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
 
 type startOptions struct {
-	address string
-	name    string
+	driver string
+	name   string
+	qemu   string
 }
 
 func newStartCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "start [vm]",
-		Short: "Start a stopped virtual machine",
 		Args:  cobra.ExactArgs(1),
+		Short: "Start a stopped virtual machine",
+		Use:   "start [vm]",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			address, err := cmd.Flags().GetString("address")
+			driver, err := cmd.Flags().GetString("driver")
+			if err != nil {
+				return err
+			}
+
+			qemu, err := cmd.Flags().GetString("qemu")
 			if err != nil {
 				return err
 			}
 
 			opts := &startOptions{
-				address: address,
-				name:    args[0],
+				driver: driver,
+				name:   args[0],
+				qemu:   qemu,
 			}
 
 			if err := runStart(opts); err != nil {
@@ -57,14 +67,31 @@ func newStartCommand() *cobra.Command {
 }
 
 func runStart(opts *startOptions) error {
-	client, err := NewRPCClient(opts.address)
+	var drv driver.Driver
+	var err error
+
+	switch driver.DriverType(opts.driver) {
+	case driver.DriverTypeQEMU:
+		drv, err = driver.NewQEMU(opts.qemu)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("invalid driver")
+	}
+
+	eng, err := engine.New(&engine.NewOptions{
+		Writer: os.Stderr,
+		Driver: drv,
+	})
 	if err != nil {
 		return err
 	}
 
-	if err := client.StartVirtualMachine(opts.name); err != nil {
-		return err
+	vm := eng.FindVirtualMachine(opts.name)
+	if vm == nil {
+		return fmt.Errorf(`virtual machine "%s" not found`, opts.name)
 	}
 
-	return nil
+	return vm.Start()
 }

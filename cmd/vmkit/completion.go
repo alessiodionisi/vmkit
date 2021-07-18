@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -24,8 +24,9 @@ import (
 
 func newCompletionCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "completion [bash|zsh|fish|powershell]",
+		Args:  cobra.ExactValidArgs(1),
 		Short: "Output shell completion code for the specified shell (bash, zsh, fish or powershell)",
+		Use:   "completion [bash|zsh|fish|powershell]",
 		Example: `  # Load bash completion into current shell
   source <(vmkit completion bash)
 
@@ -37,7 +38,6 @@ func newCompletionCommand() *cobra.Command {
 
   # Load powershell completion into current shell
   vmkit completion powershell | Out-String | Invoke-Expression`,
-		Args:      cobra.ExactValidArgs(1),
 		ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
 		Run: func(cmd *cobra.Command, args []string) {
 			switch args[0] {

@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,15 +17,15 @@
 package driver
 
 import (
-	"errors"
 	"os/exec"
 
 	"github.com/adnsio/vmkit/pkg/config"
 )
 
-var (
-	ErrNotSupported = errors.New("driver not supported")
-)
+type CommandOptions struct {
+	Config       *config.VirtualMachineV1Alpha1
+	CloudInitISO string
+}
 
 type DriverType string
 
@@ -35,5 +35,5 @@ const (
 )
 
 type Driver interface {
-	Command(config *config.VirtualMachineV1Alpha1) (*exec.Cmd, error)
+	Command(opts *CommandOptions) (*exec.Cmd, error)
 }

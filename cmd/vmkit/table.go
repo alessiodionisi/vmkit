@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -23,27 +23,27 @@ import (
 )
 
 type writeTableOptions struct {
-	Writer io.Writer
-	Header []string
-	Rows   [][]string
+	header []string
+	rows   [][]string
+	writer io.Writer
 }
 
 func writeTable(opts *writeTableOptions) {
-	table := tablewriter.NewWriter(opts.Writer)
-	table.SetAutoWrapText(false)
-	table.SetAutoFormatHeaders(true)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	table := tablewriter.NewWriter(opts.writer)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetAutoFormatHeaders(true)
+	table.SetAutoWrapText(false)
+	table.SetBorder(false)
 	table.SetCenterSeparator("")
 	table.SetColumnSeparator("")
-	table.SetRowSeparator("")
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetTablePadding("\t")
 	table.SetNoWhiteSpace(true)
+	table.SetRowSeparator("")
+	table.SetTablePadding("\t")
 
-	table.SetHeader(opts.Header)
-	table.AppendBulk(opts.Rows)
+	table.AppendBulk(opts.rows)
+	table.SetHeader(opts.header)
 
 	table.Render()
 }

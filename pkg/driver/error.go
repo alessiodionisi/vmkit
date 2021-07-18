@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,30 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package util
+package driver
 
-import "net/url"
+import "errors"
 
-type NetworkAddress struct {
-	Network string
-	Address string
-}
-
-func NewNetworkAddress(address string) (*NetworkAddress, error) {
-	parsedAddress, err := url.Parse(address)
-	if err != nil {
-		return nil, err
-	}
-
-	if parsedAddress.Scheme == "unix" {
-		return &NetworkAddress{
-			Network: parsedAddress.Scheme,
-			Address: parsedAddress.Path,
-		}, nil
-	} else {
-		return &NetworkAddress{
-			Network: parsedAddress.Scheme,
-			Address: parsedAddress.Host,
-		}, nil
-	}
-}
+var (
+	ErrNotSupported = errors.New("driver not supported")
+)

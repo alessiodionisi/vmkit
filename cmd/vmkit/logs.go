@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -24,23 +24,16 @@ import (
 )
 
 type logsOptions struct {
-	address string
-	name    string
+	name string
 }
 
 func newLogsCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "logs [vm]",
 		Args: cobra.ExactArgs(1),
+		Use:  "logs [vm]",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			address, err := cmd.Flags().GetString("address")
-			if err != nil {
-				return err
-			}
-
 			opts := &logsOptions{
-				address: address,
-				name:    args[0],
+				name: args[0],
 			}
 
 			if err := runLogs(opts); err != nil {
@@ -56,19 +49,19 @@ func newLogsCommand() *cobra.Command {
 }
 
 func runLogs(opts *logsOptions) error {
-	client, err := NewRPCClient(opts.address)
-	if err != nil {
-		return err
-	}
+	// client, err := NewRPCClient(opts.address)
+	// if err != nil {
+	// 	return err
+	// }
 
-	logs, err := client.VirtualMachineLogs(opts.name)
-	if err != nil {
-		return err
-	}
+	// logs, err := client.VirtualMachineLogs(opts.name)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if logs != "" {
-		fmt.Println(logs)
-	}
+	// if logs != "" {
+	// 	fmt.Println(logs)
+	// }
 
 	return nil
 }

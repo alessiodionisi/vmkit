@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -41,29 +41,49 @@ func (q *QEMU) supported() bool {
 	return true
 }
 
-func (d *QEMU) Command(config *config.VirtualMachineV1Alpha1) (*exec.Cmd, error) {
+func (d *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{
 		"-machine", "virt,highmem=off",
 		"-cpu", "cortex-a72",
 		"-accel", "hvf",
 		"-rtc", "base=localtime",
 		"-nographic",
+		"-device", "qemu-xhci",
 	}
 
-	cmdArgs = append(cmdArgs, "-smp", fmt.Sprint(config.Spec.CPU))
-	cmdArgs = append(cmdArgs, "-m", config.Spec.Memory)
+	switch {
+	case opts.Config.Spec.BootLoader.EFI != nil:
+		cmdArgs = append(cmdArgs, "-bios", opts.Config.Spec.BootLoader.EFI.Path)
+	default:
+		return nil, fmt.Errorf("%w, qemu supports only efi boot loader", config.ErrInvalidBootLoaderConfiguration)
+	}
 
-	for i, disk := range config.Spec.Disks {
+	cmdArgs = append(cmdArgs, "-smp", fmt.Sprint(opts.Config.Spec.CPU))
+	cmdArgs = append(cmdArgs, "-m", opts.Config.Spec.Memory)
+
+	for i, disk := range opts.Config.Spec.Disks {
 		cmdArgs = append(cmdArgs, "-device", fmt.Sprintf("virtio-blk-pci,drive=drive%d", i))
 		cmdArgs = append(cmdArgs, "-drive", fmt.Sprintf("if=none,media=disk,id=drive%d,file=%s,cache=writethrough", i, disk.Path))
 	}
 
-	for i, network := range config.Spec.Networks {
-		cmdArgs = append(cmdArgs, "-device", fmt.Sprintf("virtio-net-pci,netdev=net%d,mac=%s", i, network.MACAddress))
-		cmdArgs = append(cmdArgs, "-netdev", fmt.Sprintf("user,id=net%d", i))
+	for i, network := range opts.Config.Spec.Networks {
+		device := []string{
+			"virtio-net-pci",
+			fmt.Sprintf("netdev=netdev%d", i),
+		}
+
+		if network.MACAddress != "" {
+			device = append(device, fmt.Sprintf("mac=%s", network.MACAddress))
+		}
+
+		cmdArgs = append(cmdArgs, "-device", strings.Join(device, ","))
+		cmdArgs = append(cmdArgs, "-netdev", fmt.Sprintf("user,id=netdev%d,hostfwd=tcp::2222-:22", i))
 	}
 
-	fmt.Printf("%s %s", d.executableName, strings.Join(cmdArgs, " "))
+	if opts.CloudInitISO != "" {
+		cmdArgs = append(cmdArgs, "-device", "usb-storage,drive=cloud-init,removable=true")
+		cmdArgs = append(cmdArgs, "-drive", fmt.Sprintf("if=none,media=cdrom,id=cloud-init,file=%s,cache=writethrough", opts.CloudInitISO))
+	}
 
 	return exec.Command(
 		d.executableName,

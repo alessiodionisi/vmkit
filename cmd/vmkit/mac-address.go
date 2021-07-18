@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -25,8 +25,8 @@ import (
 
 func newMacAddressCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "mac-address",
 		Short: "Generate a random unicast locally administered address",
+		Use:   "mac-address",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			macAddress, err := macaddress.NewUnicastLocallyAdministeredMACAddress()
 			if err != nil {

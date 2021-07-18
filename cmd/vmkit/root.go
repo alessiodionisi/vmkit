@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,25 +17,30 @@
 package main
 
 import (
+	"github.com/adnsio/vmkit/pkg/driver"
 	"github.com/spf13/cobra"
 )
 
 func newRootCommand() *cobra.Command {
 	cmd := &cobra.Command{
+		Short: "Spin up Linux VMs with QEMU and Apple virtualization framework",
 		Use:   "vmkit",
-		Short: "VMKit CLI controls the running VMKit Daemon",
 	}
 
-	cmd.AddCommand(newApplyCommand())
 	cmd.AddCommand(newCompletionCommand())
+	cmd.AddCommand(newImagesCommand())
 	cmd.AddCommand(newListCommand())
 	cmd.AddCommand(newLogsCommand())
 	cmd.AddCommand(newMacAddressCommand())
+	cmd.AddCommand(newPullCommand())
 	cmd.AddCommand(newRemoveCommand())
 	cmd.AddCommand(newStartCommand())
 	cmd.AddCommand(newStopCommand())
 
-	cmd.PersistentFlags().StringP("address", "a", "unix:///var/run/vmkitd.sock", "(unix, tcp)")
+	cmd.PersistentFlags().String("driver", string(driver.DefaultDriver), "driver to use (qemu, avfvm)")
+	cmd.PersistentFlags().String("avfvm", driver.AVFVMExecutableName, "avfvm executable name")
+	cmd.PersistentFlags().String("qemu", driver.QEMUExecutableName, "qemu executable name")
+	cmd.PersistentFlags().String("qemu-img", "qemu-img", "qemu-img executable name")
 
 	return cmd
 }

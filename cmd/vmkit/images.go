@@ -19,21 +19,17 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
 
-func newListCommand() *cobra.Command {
+func newImagesCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Short: "List virtual machines",
-		Use:   "list",
-		Aliases: []string{
-			"ls",
-		},
+		Short: "List images",
+		Use:   "images",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := runList(); err != nil {
+			if err := runImages(); err != nil {
 				fmt.Printf("error: %s\n", err)
 				os.Exit(1)
 			}
@@ -45,7 +41,7 @@ func newListCommand() *cobra.Command {
 	return cmd
 }
 
-func runList() error {
+func runImages() error {
 	eng, err := engine.New(&engine.NewOptions{
 		Writer: os.Stderr,
 	})
@@ -53,18 +49,26 @@ func runList() error {
 		return err
 	}
 
-	vms := eng.ListVirtualMachines()
+	imgs := eng.ListImages()
 
-	tableRows := make([][]string, 0, len(vms))
-	for _, vm := range vms {
-		status, err := vm.Status()
+	tableRows := make([][]string, 0, len(imgs))
+	for _, image := range imgs {
+		pulled := "No"
+
+		imgPulled, err := image.Pulled()
 		if err != nil {
 			return err
 		}
 
+		if imgPulled {
+			pulled = "Yes"
+		}
+
 		tableRows = append(tableRows, []string{
-			vm.Name,
-			strings.Title(string(status)),
+			image.Name,
+			image.Version,
+			image.Description,
+			pulled,
 		})
 	}
 
@@ -72,7 +76,9 @@ func runList() error {
 		writer: os.Stdout,
 		header: []string{
 			"Name",
-			"Status",
+			"Version",
+			"Description",
+			"Pulled",
 		},
 		rows: tableRows,
 	})

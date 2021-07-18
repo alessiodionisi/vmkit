@@ -1,4 +1,4 @@
-// Virtual Machine manager that supports QEMU and Apple virtualization framework on macOS
+// Spin up Linux VMs with QEMU and Apple virtualization framework
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,17 +18,11 @@ package driver
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 
 	"github.com/adnsio/vmkit/pkg/config"
-)
-
-var (
-	ErrInvalidBootLoaderConfiguration    = errors.New("invalid boot loader configuration")
-	ErrInvalidLinuxBootLoaderCommandLine = errors.New("invalid linux boot loader command line")
 )
 
 const (
@@ -39,40 +33,40 @@ type AVFVM struct {
 	executableName string
 }
 
-func (d *AVFVM) Command(config *config.VirtualMachineV1Alpha1) (*exec.Cmd, error) {
+func (d *AVFVM) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{}
 
-	if config.Spec.BootLoader.Linux == nil {
-		return nil, fmt.Errorf("%w, linux boot loader is mandatory with avfvm", ErrInvalidBootLoaderConfiguration)
+	if opts.Config.Spec.BootLoader.Linux == nil {
+		return nil, fmt.Errorf("%w, linux boot loader is mandatory with avfvm", config.ErrInvalidBootLoaderConfiguration)
 	}
 
-	cmdArgs = append(cmdArgs, "--cpu-count", fmt.Sprint(config.Spec.CPU))
-	cmdArgs = append(cmdArgs, "--linux-kernel", config.Spec.BootLoader.Linux.Kernel)
-	cmdArgs = append(cmdArgs, "--linux-initial-ramdisk", config.Spec.BootLoader.Linux.InitialRamdisk)
+	cmdArgs = append(cmdArgs, "--cpu-count", fmt.Sprint(opts.Config.Spec.CPU))
+	cmdArgs = append(cmdArgs, "--linux-kernel", opts.Config.Spec.BootLoader.Linux.Kernel)
+	cmdArgs = append(cmdArgs, "--linux-initial-ramdisk", opts.Config.Spec.BootLoader.Linux.InitialRamdisk)
 
 	var linuxCommandLine []string
 
-	if config.Spec.BootLoader.Linux.CommandLine != "" {
-		linuxCommandLine = append(linuxCommandLine, config.Spec.BootLoader.Linux.CommandLine)
+	if opts.Config.Spec.BootLoader.Linux.CommandLine != "" {
+		linuxCommandLine = append(linuxCommandLine, opts.Config.Spec.BootLoader.Linux.CommandLine)
 	}
 
-	if config.Spec.CloudInit != nil {
+	if opts.Config.Spec.CloudInit != nil {
 		// CLOUD INIT - DATA SOURCE
-		linuxCommandLine = append(linuxCommandLine, fmt.Sprintf("ds=nocloud;h=%s;i=%s", config.Metadata.Name, config.Metadata.Name))
+		linuxCommandLine = append(linuxCommandLine, fmt.Sprintf("ds=nocloud;h=%s;i=%s", opts.Config.Metadata.Name, opts.Config.Metadata.Name))
 
 		// CLOUD INIT - NETWORK CONFIGURATION
-		if config.Spec.CloudInit.NetworkConfiguration != nil {
+		if opts.Config.Spec.CloudInit.NetworkConfiguration != "" {
 			linuxCommandLine = append(
 				linuxCommandLine,
 				fmt.Sprintf("network-config=%s",
-					base64.StdEncoding.EncodeToString([]byte(*config.Spec.CloudInit.NetworkConfiguration)),
+					base64.StdEncoding.EncodeToString([]byte(opts.Config.Spec.CloudInit.NetworkConfiguration)),
 				),
 			)
 		}
 
 		// CLOUD INIT - USER DATA
-		if config.Spec.CloudInit.UserData != nil {
-			linuxCommandLine = append(linuxCommandLine, fmt.Sprintf("cc: %s end_cc", *config.Spec.CloudInit.UserData))
+		if opts.Config.Spec.CloudInit.UserData != "" {
+			linuxCommandLine = append(linuxCommandLine, fmt.Sprintf("cc: %s end_cc", opts.Config.Spec.CloudInit.UserData))
 		}
 	}
 
@@ -80,25 +74,25 @@ func (d *AVFVM) Command(config *config.VirtualMachineV1Alpha1) (*exec.Cmd, error
 
 	if !strings.Contains(linuxCommandLineString, "console=hvc0") {
 		return nil, fmt.Errorf(
-			"%w, console=hvc0 is mandatory with avfvm",
-			ErrInvalidLinuxBootLoaderCommandLine,
+			`%w, linux command line "console=hvc0" is mandatory with avfvm`,
+			config.ErrInvalidBootLoaderConfiguration,
 		)
 	}
 
-	if config.Spec.CPU > 1 && !strings.Contains(linuxCommandLineString, "irqaffinity=0") {
+	if opts.Config.Spec.CPU > 1 && !strings.Contains(linuxCommandLineString, "irqaffinity=0") {
 		return nil, fmt.Errorf(
-			"%w, irqaffinity=0 is needed to fix sync problems with more than one cpu with avfvm",
-			ErrInvalidLinuxBootLoaderCommandLine,
+			`%w, linux command line "irqaffinity=0" is needed to fix sync problems with more than one cpu with avfvm`,
+			config.ErrInvalidBootLoaderConfiguration,
 		)
 	}
 
 	cmdArgs = append(cmdArgs, "--linux-command-line", linuxCommandLineString)
 
-	for _, disk := range config.Spec.Disks {
+	for _, disk := range opts.Config.Spec.Disks {
 		cmdArgs = append(cmdArgs, "--disk-image", disk.Path)
 	}
 
-	for _, network := range config.Spec.Networks {
+	for _, network := range opts.Config.Spec.Networks {
 		cmdArgs = append(cmdArgs, "--network", fmt.Sprintf("nat,macAddress=%s", network.MACAddress))
 	}
 
