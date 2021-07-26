@@ -262,10 +262,6 @@ func New(opts *NewOptions) (*Engine, error) {
 		return nil, err
 	}
 
-	if err := engine.writeBiosFiles(); err != nil {
-		return nil, err
-	}
-
 	switch Driver(opts.Driver) {
 	case DriverQEMU:
 		var err error

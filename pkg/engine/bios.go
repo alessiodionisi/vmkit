@@ -18,6 +18,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path"
 
@@ -33,7 +34,7 @@ func (eng *Engine) qovmfBiosPath() string {
 	return path.Join(eng.biosPath(), "OVMF.fd")
 }
 
-func (eng *Engine) writeBiosFiles() error {
+func (eng *Engine) checkAndWriteBiosFiles() error {
 	biosPath := eng.biosPath()
 	_, err := os.Stat(biosPath)
 	if err != nil {
@@ -50,6 +51,8 @@ func (eng *Engine) writeBiosFiles() error {
 	_, err = os.Stat(qemuEFIBiosPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintln(eng.writer, "Extracting qemu efi bios")
+
 			if err := os.WriteFile(qemuEFIBiosPath, qemuefi.Bytes, 0644); err != nil {
 				return err
 			}
@@ -62,6 +65,8 @@ func (eng *Engine) writeBiosFiles() error {
 	_, err = os.Stat(ovmfBiosPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintln(eng.writer, "Extracting ovmf bios")
+
 			if err := os.WriteFile(ovmfBiosPath, ovmf.Bytes, 0644); err != nil {
 				return err
 			}

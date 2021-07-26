@@ -156,6 +156,10 @@ func (vm *VirtualMachine) Start() error {
 		return err
 	}
 
+	if err := vm.engine.checkAndWriteBiosFiles(); err != nil {
+		return err
+	}
+
 	// use the driver to create the start command
 	cmd, err := vm.engine.driver.Command(&driver.CommandOptions{
 		Disks: []string{

@@ -72,7 +72,7 @@ func newCreateCommand() *cobra.Command {
 			}
 
 			if err := runCreate(opts); err != nil {
-				fmt.Printf("error: %s\n", err)
+				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
 
