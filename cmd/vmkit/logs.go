@@ -24,20 +24,27 @@ import (
 )
 
 type logsOptions struct {
-	name string
+	name          string
+	globalOptions *globalOptions
 }
 
 func newLogsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Args: cobra.ExactArgs(1),
-		Use:  "logs [vm]",
+		Use:  "logs [name]",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			globalOptions, err := newGlobalOptions(cmd)
+			if err != nil {
+				return err
+			}
+
 			opts := &logsOptions{
-				name: args[0],
+				name:          args[0],
+				globalOptions: globalOptions,
 			}
 
 			if err := runLogs(opts); err != nil {
-				fmt.Printf("error: %s\n", err)
+				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
 
@@ -49,19 +56,5 @@ func newLogsCommand() *cobra.Command {
 }
 
 func runLogs(opts *logsOptions) error {
-	// client, err := NewRPCClient(opts.address)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// logs, err := client.VirtualMachineLogs(opts.name)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if logs != "" {
-	// 	fmt.Println(logs)
-	// }
-
 	return nil
 }

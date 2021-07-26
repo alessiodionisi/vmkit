@@ -19,5 +19,7 @@ package driver
 import "errors"
 
 var (
-	ErrNotSupported = errors.New("driver not supported")
+	ErrExecutableNotFound         = errors.New("driver: executable not found")
+	ErrUnsupportedArchitecture    = errors.New("driver: unsupported architecture")
+	ErrUnsupportedOperatingSystem = errors.New("driver: unsupported operating system")
 )

@@ -18,17 +18,29 @@ package driver
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
+	"runtime"
 	"strings"
-
-	"github.com/adnsio/vmkit/pkg/config"
 )
 
-type QEMU struct {
-	executableName string
+type NewQEMUOptions struct {
+	ExecutableName  string
+	OVMFBiosPath    string
+	QEMUEFIBiosPath string
+	Writer          io.Writer
 }
 
-func (q *QEMU) supported() bool {
+type QEMU struct {
+	accelerator    string
+	biosPath       string
+	cpu            string
+	executableName string
+	machine        string
+	writer         io.Writer
+}
+
+func (q *QEMU) exist() bool {
 	path, err := exec.LookPath(q.executableName)
 	if err != nil {
 		return false
@@ -43,46 +55,42 @@ func (q *QEMU) supported() bool {
 
 func (d *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{
-		"-machine", "virt,highmem=off",
-		"-cpu", "cortex-a72",
-		"-accel", "hvf",
-		"-rtc", "base=localtime",
-		"-nographic",
-		"-device", "qemu-xhci",
+		"-accel", d.accelerator, // enable apple hypervisor.framework acceleration
+		"-bios", d.biosPath, // sets the bios
+		"-cpu", d.cpu, // sets the emulated cpu
+		"-device", "qemu-xhci", // adds a PCI bus for USB devices
+		"-m", fmt.Sprint(opts.Memory), // sets the memory available
+		"-machine", d.machine, // sets the emulated machine with highmem=off
+		"-nographic",             // use stdio for the serial input and output
+		"-rtc", "base=localtime", // sync RTC clock with host time
+		"-smp", fmt.Sprint(opts.CPU), // sets the number of CPUs
 	}
 
-	switch {
-	case opts.Config.Spec.BootLoader.EFI != nil:
-		cmdArgs = append(cmdArgs, "-bios", opts.Config.Spec.BootLoader.EFI.Path)
-	default:
-		return nil, fmt.Errorf("%w, qemu supports only efi boot loader", config.ErrInvalidBootLoaderConfiguration)
-	}
-
-	cmdArgs = append(cmdArgs, "-smp", fmt.Sprint(opts.Config.Spec.CPU))
-	cmdArgs = append(cmdArgs, "-m", opts.Config.Spec.Memory)
-
-	for i, disk := range opts.Config.Spec.Disks {
-		cmdArgs = append(cmdArgs, "-device", fmt.Sprintf("virtio-blk-pci,drive=drive%d", i))
-		cmdArgs = append(cmdArgs, "-drive", fmt.Sprintf("if=none,media=disk,id=drive%d,file=%s,cache=writethrough", i, disk.Path))
-	}
-
-	for i, network := range opts.Config.Spec.Networks {
-		device := []string{
-			"virtio-net-pci",
-			fmt.Sprintf("netdev=netdev%d", i),
+	for i, disk := range opts.Disks {
+		diskArgs := []string{
+			"-device", fmt.Sprintf("virtio-blk-pci,drive=drive%d", i), // create a virtio PCI block device
+			"-drive", fmt.Sprintf("if=none,media=disk,id=drive%d,file=%s,cache=writethrough", i, disk), // sets the media as disk and load the file
 		}
 
-		if network.MACAddress != "" {
-			device = append(device, fmt.Sprintf("mac=%s", network.MACAddress))
+		cmdArgs = append(cmdArgs, diskArgs...)
+	}
+
+	if opts.SSHPortForward != 0 {
+		networkArgs := []string{
+			"-device", "virtio-net-pci,netdev=netdev0", // create a virtio PCI network device
+			"-netdev", fmt.Sprintf("user,id=netdev0,hostfwd=tcp::%d-:22", opts.SSHPortForward), // configure port forwarding
 		}
 
-		cmdArgs = append(cmdArgs, "-device", strings.Join(device, ","))
-		cmdArgs = append(cmdArgs, "-netdev", fmt.Sprintf("user,id=netdev%d,hostfwd=tcp::2222-:22", i))
+		cmdArgs = append(cmdArgs, networkArgs...)
 	}
 
 	if opts.CloudInitISO != "" {
-		cmdArgs = append(cmdArgs, "-device", "usb-storage,drive=cloud-init,removable=true")
-		cmdArgs = append(cmdArgs, "-drive", fmt.Sprintf("if=none,media=cdrom,id=cloud-init,file=%s,cache=writethrough", opts.CloudInitISO))
+		cloudInitArgs := []string{
+			"-device", "usb-storage,drive=cloud-init,removable=true", // create a removable USB storage
+			"-drive", fmt.Sprintf("if=none,media=cdrom,id=cloud-init,file=%s,cache=writethrough", opts.CloudInitISO), // sets the media as cdrom and load the ISO file
+		}
+
+		cmdArgs = append(cmdArgs, cloudInitArgs...)
 	}
 
 	return exec.Command(
@@ -91,16 +99,50 @@ func (d *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	), nil
 }
 
-func NewQEMU(
-	executableName string,
-) (Driver, error) {
-	d := &QEMU{
-		executableName: executableName,
+func NewQEMU(opts *NewQEMUOptions) (Driver, error) {
+	qemu := &QEMU{
+		executableName: opts.ExecutableName,
+		biosPath:       opts.OVMFBiosPath,
+		writer:         opts.Writer,
 	}
 
-	if !d.supported() {
-		return nil, ErrNotSupported
+	if !qemu.exist() {
+		return nil, ErrExecutableNotFound
 	}
 
-	return d, nil
+	switch {
+	case strings.Contains(qemu.executableName, "aarch64"):
+		if runtime.GOARCH != "arm64" {
+			return nil, ErrUnsupportedArchitecture
+		}
+
+		qemu.biosPath = opts.QEMUEFIBiosPath
+		qemu.cpu = "cortex-a72"
+		qemu.machine = "virt,highmem=off"
+
+	case strings.Contains(qemu.executableName, "x86_64"):
+		if runtime.GOARCH != "amd64" {
+			return nil, ErrUnsupportedArchitecture
+		}
+
+		qemu.biosPath = opts.OVMFBiosPath
+		qemu.cpu = "host"
+		qemu.machine = "q35"
+
+	default:
+		return nil, ErrUnsupportedArchitecture
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		qemu.accelerator = "hvf"
+
+	case "linux":
+		qemu.accelerator = "kvm"
+
+	default:
+		return nil, ErrUnsupportedOperatingSystem
+	}
+
+	return qemu, nil
 }

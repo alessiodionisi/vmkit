@@ -21,7 +21,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
 
@@ -33,8 +32,13 @@ func newListCommand() *cobra.Command {
 			"ls",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := runList(); err != nil {
-				fmt.Printf("error: %s\n", err)
+			globalOptions, err := newGlobalOptions(cmd)
+			if err != nil {
+				return err
+			}
+
+			if err := runList(globalOptions); err != nil {
+				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
 
@@ -45,10 +49,11 @@ func newListCommand() *cobra.Command {
 	return cmd
 }
 
-func runList() error {
-	eng, err := engine.New(&engine.NewOptions{
-		Writer: os.Stderr,
-	})
+func runList(opts *globalOptions) error {
+	eng, err := newEngine(opts)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}

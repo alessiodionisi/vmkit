@@ -17,30 +17,111 @@
 package main
 
 import (
-	"github.com/adnsio/vmkit/pkg/driver"
+	"os"
+	"path"
+	"runtime"
+
+	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
 
-func newRootCommand() *cobra.Command {
+type globalOptions struct {
+	driver               string
+	driverExecutableName string
+	configPath           string
+}
+
+func newRootCommand() (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Short: "Spin up Linux VMs with QEMU and Apple virtualization framework",
 		Use:   "vmkit",
 	}
 
+	// cmd.AddCommand(newLogsCommand())
 	cmd.AddCommand(newCompletionCommand())
+	cmd.AddCommand(newCreateCommand())
+	cmd.AddCommand(newExecCommand())
 	cmd.AddCommand(newImagesCommand())
 	cmd.AddCommand(newListCommand())
-	cmd.AddCommand(newLogsCommand())
-	cmd.AddCommand(newMacAddressCommand())
 	cmd.AddCommand(newPullCommand())
 	cmd.AddCommand(newRemoveCommand())
+	cmd.AddCommand(newRestartCommand())
+	cmd.AddCommand(newSSHCommand())
 	cmd.AddCommand(newStartCommand())
 	cmd.AddCommand(newStopCommand())
+	cmd.AddCommand(newXtermCommand())
 
-	cmd.PersistentFlags().String("driver", string(driver.DefaultDriver), "driver to use (qemu, avfvm)")
-	cmd.PersistentFlags().String("avfvm", driver.AVFVMExecutableName, "avfvm executable name")
-	cmd.PersistentFlags().String("qemu", driver.QEMUExecutableName, "qemu executable name")
-	cmd.PersistentFlags().String("qemu-img", "qemu-img", "qemu-img executable name")
+	homePath, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
 
-	return cmd
+	defaultConfigPath := path.Join(homePath, ".vmkit")
+
+	var defaultDriver engine.Driver
+	var defaultDriverExecutableName string
+
+	switch runtime.GOOS {
+	case "darwin":
+		defaultDriver = engine.DriverQEMU
+
+	case "linux":
+		defaultDriver = engine.DriverQEMU
+
+	default:
+		return nil, ErrUnsupportedOperatingSystem
+	}
+
+	if defaultDriver == engine.DriverAVFVM {
+		defaultDriverExecutableName = "avfvm"
+	} else {
+		switch runtime.GOARCH {
+		case "arm64":
+			defaultDriverExecutableName = "qemu-system-aarch64"
+
+		case "amd64":
+			defaultDriverExecutableName = "qemu-system-x86_64"
+
+		default:
+			return nil, ErrUnsupportedArchitecture
+		}
+	}
+
+	cmd.PersistentFlags().String("config-path", defaultConfigPath, "configuration path")
+	cmd.PersistentFlags().String("driver-executable-name", defaultDriverExecutableName, "driver executable name")
+	cmd.PersistentFlags().String("driver", string(defaultDriver), "driver to use (qemu or avfvm)")
+
+	return cmd, nil
+}
+
+func newGlobalOptions(cmd *cobra.Command) (*globalOptions, error) {
+	configPath, err := cmd.Flags().GetString("config-path")
+	if err != nil {
+		return nil, err
+	}
+
+	driver, err := cmd.Flags().GetString("driver")
+	if err != nil {
+		return nil, err
+	}
+
+	driverExecutableName, err := cmd.Flags().GetString("driver-executable-name")
+	if err != nil {
+		return nil, err
+	}
+
+	return &globalOptions{
+		driver:               driver,
+		driverExecutableName: driverExecutableName,
+		configPath:           configPath,
+	}, nil
+}
+
+func newEngine(opts *globalOptions) (*engine.Engine, error) {
+	return engine.New(&engine.NewOptions{
+		Driver:               engine.Driver(opts.driver),
+		DriverExecutableName: opts.driverExecutableName,
+		Path:                 opts.configPath,
+		Writer:               os.Stderr,
+	})
 }

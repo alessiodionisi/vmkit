@@ -16,10 +16,19 @@
 
 package main
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 func main() {
-	if err := newRootCommand().Execute(); err != nil {
+	rootCommand, err := newRootCommand()
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		os.Exit(1)
+	}
+
+	if err := rootCommand.Execute(); err != nil {
 		os.Exit(1)
 	}
 }

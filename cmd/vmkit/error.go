@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// +build darwin
+package main
 
-package driver
+import "errors"
 
-const (
-	// TODO: replace with DriverTypeAVFVM when is stable
-	DefaultDriver DriverType = DriverTypeQEMU
+var (
+	ErrUnsupportedArchitecture    = errors.New("vmkit: unsupported architecture")
+	ErrUnsupportedOperatingSystem = errors.New("vmkit: unsupported operating system")
 )

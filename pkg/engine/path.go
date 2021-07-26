@@ -17,51 +17,25 @@
 package engine
 
 import (
-	"os"
 	"path"
 )
 
-func (eng *Engine) configurationPath() (string, error) {
-	homePath, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	return path.Join(homePath, ".vmkit"), nil
+func (eng *Engine) biosPath() string {
+	return path.Join(eng.path, "bios")
 }
 
-func (eng *Engine) imagesPath() (string, error) {
-	configPath, err := eng.configurationPath()
-	if err != nil {
-		return "", err
-	}
-
-	return path.Join(configPath, "image"), nil
+func (eng *Engine) imagesPath() string {
+	return path.Join(eng.path, "image")
 }
 
-func (eng *Engine) imagePath(name string) (string, error) {
-	imagePath, err := eng.imagesPath()
-	if err != nil {
-		return "", err
-	}
-
-	return path.Join(imagePath, name), nil
+func (eng *Engine) imagePath(name string) string {
+	return path.Join(eng.imagesPath(), name)
 }
 
-func (eng *Engine) virtualMachinesPath() (string, error) {
-	configPath, err := eng.configurationPath()
-	if err != nil {
-		return "", err
-	}
-
-	return path.Join(configPath, "virtual-machine"), nil
+func (eng *Engine) virtualMachinesPath() string {
+	return path.Join(eng.path, "virtual-machine")
 }
 
-func (eng *Engine) virtualMachinePath(name string) (string, error) {
-	virtualMachinePath, err := eng.virtualMachinesPath()
-	if err != nil {
-		return "", err
-	}
-
-	return path.Join(virtualMachinePath, name), nil
+func (eng *Engine) virtualMachinePath(name string) string {
+	return path.Join(eng.virtualMachinesPath(), name)
 }

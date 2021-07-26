@@ -17,45 +17,35 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
-	"github.com/adnsio/vmkit/pkg/driver"
-	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
 
 type startOptions struct {
-	driver string
-	name   string
-	qemu   string
+	*globalOptions
+	name string
 }
 
 func newStartCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.ExactArgs(1),
 		Short: "Start a stopped virtual machine",
-		Use:   "start [vm]",
+		Use:   "start [name]",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			driver, err := cmd.Flags().GetString("driver")
-			if err != nil {
-				return err
-			}
-
-			qemu, err := cmd.Flags().GetString("qemu")
+			globalOptions, err := newGlobalOptions(cmd)
 			if err != nil {
 				return err
 			}
 
 			opts := &startOptions{
-				driver: driver,
-				name:   args[0],
-				qemu:   qemu,
+				name:          args[0],
+				globalOptions: globalOptions,
 			}
 
 			if err := runStart(opts); err != nil {
-				fmt.Printf("error: %s\n", err)
+				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
 
@@ -67,23 +57,10 @@ func newStartCommand() *cobra.Command {
 }
 
 func runStart(opts *startOptions) error {
-	var drv driver.Driver
-	var err error
-
-	switch driver.DriverType(opts.driver) {
-	case driver.DriverTypeQEMU:
-		drv, err = driver.NewQEMU(opts.qemu)
-		if err != nil {
-			return err
-		}
-	default:
-		return errors.New("invalid driver")
+	eng, err := newEngine(opts.globalOptions)
+	if err != nil {
+		return err
 	}
-
-	eng, err := engine.New(&engine.NewOptions{
-		Writer: os.Stderr,
-		Driver: drv,
-	})
 	if err != nil {
 		return err
 	}

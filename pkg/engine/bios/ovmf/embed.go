@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// +build !darwin
+package ovmf
 
-package driver
+import _ "embed"
 
-const (
-	DefaultDriver DriverType = DriverQEMU
-)
+//go:embed OVMF.fd
+var Bytes []byte

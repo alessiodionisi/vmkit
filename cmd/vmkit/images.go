@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
 
@@ -29,8 +28,13 @@ func newImagesCommand() *cobra.Command {
 		Short: "List images",
 		Use:   "images",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := runImages(); err != nil {
-				fmt.Printf("error: %s\n", err)
+			globalOptions, err := newGlobalOptions(cmd)
+			if err != nil {
+				return err
+			}
+
+			if err := runImages(globalOptions); err != nil {
+				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
 
@@ -41,10 +45,11 @@ func newImagesCommand() *cobra.Command {
 	return cmd
 }
 
-func runImages() error {
-	eng, err := engine.New(&engine.NewOptions{
-		Writer: os.Stderr,
-	})
+func runImages(opts *globalOptions) error {
+	eng, err := newEngine(opts)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}

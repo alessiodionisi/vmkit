@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package config
+package engine
 
 import "errors"
 
 var (
-	ErrInvalidBootLoaderConfiguration = errors.New("invalid boot loader configuration")
-	ErrInvalidKind                    = errors.New("invalid kind")
-	ErrInvalidMetadataConfiguration   = errors.New("invalid metadata configuration")
-	ErrInvalidSpecConfiguration       = errors.New("invalid spec configuration")
-	ErrInvalidVersion                 = errors.New("invalid version")
+	ErrImageNotFound                = errors.New("engine: image not found")
+	ErrInvalidChecksum              = errors.New("engine: invalid checksum")
+	ErrInvalidDriver                = errors.New("engine: invalid driver")
+	ErrInvalidSSHPort               = errors.New("engine: invalid ssh port")
+	ErrVirtualMachineAlreadyExist   = errors.New("engine: virtual machine already exist")
+	ErrVirtualMachineAlreadyRunning = errors.New("engine: virtual machine is already running")
+	ErrVirtualMachineNotRunning     = errors.New("engine: virtual machine is not running")
 )

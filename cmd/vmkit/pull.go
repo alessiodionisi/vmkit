@@ -20,26 +20,32 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
 
 type pullOptions struct {
-	name string
+	name          string
+	globalOptions *globalOptions
 }
 
 func newPullCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.ExactArgs(1),
 		Short: "Pull an image",
-		Use:   "pull [image]",
+		Use:   "pull [name]",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			globalOptions, err := newGlobalOptions(cmd)
+			if err != nil {
+				return err
+			}
+
 			opts := &pullOptions{
-				name: args[0],
+				name:          args[0],
+				globalOptions: globalOptions,
 			}
 
 			if err := runPull(opts); err != nil {
-				fmt.Printf("error: %s\n", err)
+				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
 
@@ -51,9 +57,10 @@ func newPullCommand() *cobra.Command {
 }
 
 func runPull(opts *pullOptions) error {
-	eng, err := engine.New(&engine.NewOptions{
-		Writer: os.Stderr,
-	})
+	eng, err := newEngine(opts.globalOptions)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}

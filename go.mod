@@ -8,7 +8,6 @@ require (
 	github.com/frankban/quicktest v1.13.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/rs/xid v1.3.0
-	github.com/rs/zerolog v1.23.0
 	github.com/spf13/cobra v1.2.1
-	gopkg.in/yaml.v2 v2.4.0
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
 )

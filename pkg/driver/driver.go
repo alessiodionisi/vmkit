@@ -18,22 +18,17 @@ package driver
 
 import (
 	"os/exec"
-
-	"github.com/adnsio/vmkit/pkg/config"
 )
 
 type CommandOptions struct {
-	Config       *config.VirtualMachineV1Alpha1
-	CloudInitISO string
+	CloudInitISO   string
+	CPU            int
+	Disks          []string
+	Memory         int // Memory amount in megs
+	SSHPortForward int
 }
-
-type DriverType string
-
-const (
-	DriverTypeAVFVM DriverType = "avfvm"
-	DriverTypeQEMU  DriverType = "qemu"
-)
 
 type Driver interface {
 	Command(opts *CommandOptions) (*exec.Cmd, error)
+	// ExpandDisk(name string, size int) error
 }

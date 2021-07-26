@@ -35,20 +35,21 @@ type archData struct {
 }
 
 type Image struct {
-	arch        map[string]*archData
+	arch   map[string]*archData
+	engine *Engine
+	path   string
+
 	Description string
-	engine      *Engine
 	Name        string
 	Version     string
 }
 
+func (img *Image) makePath() error {
+	return os.MkdirAll(img.path, 0755)
+}
+
 func (img *Image) Pulled() (bool, error) {
-	imgPath, err := img.engine.imagePath(img.NameAndVersion())
-	if err != nil {
-		return false, err
-	}
-
-	if _, err := os.Stat(path.Join(imgPath, "disk.img")); err != nil {
+	if _, err := os.Stat(img.diskPath()); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}
@@ -56,21 +57,21 @@ func (img *Image) Pulled() (bool, error) {
 		return false, err
 	}
 
-	if _, err := os.Stat(path.Join(imgPath, "kernel")); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return false, nil
-		}
+	// if _, err := os.Stat(path.Join(img.path, "kernel")); err != nil {
+	// 	if errors.Is(err, os.ErrNotExist) {
+	// 		return false, nil
+	// 	}
 
-		return false, err
-	}
+	// 	return false, err
+	// }
 
-	if _, err := os.Stat(path.Join(imgPath, "initial-ram-disk")); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return false, nil
-		}
+	// if _, err := os.Stat(path.Join(img.path, "initial-ram-disk")); err != nil {
+	// 	if errors.Is(err, os.ErrNotExist) {
+	// 		return false, nil
+	// 	}
 
-		return false, err
-	}
+	// 	return false, err
+	// }
 
 	return true, nil
 }
@@ -79,42 +80,68 @@ func (img *Image) NameAndVersion() string {
 	return fmt.Sprintf("%s:%s", img.Name, img.Version)
 }
 
+func (img *Image) diskPath() string {
+	return path.Join(img.path, "disk.img")
+}
+
 func (img *Image) Pull() error {
-	imagePath, err := img.engine.imagePath(img.NameAndVersion())
-	if err != nil {
+	fmt.Fprintf(img.engine.writer, "Pulling image \"%s\"\n", img.NameAndVersion())
+
+	// imagePath, err := img.engine.imagePath(img.NameAndVersion())
+	// if err != nil {
+	// 	return err
+	// }
+
+	if err := img.makePath(); err != nil {
 		return err
 	}
 
-	if err := os.MkdirAll(imagePath, 0755); err != nil {
+	// TODO: download the right arch
+	if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].disk.url, img.diskPath()); err != nil {
 		return err
 	}
 
-	diskPath := path.Join(imagePath, "disk.img")
-	if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].disk.url, diskPath); err != nil {
-		return err
-	}
+	// if err := img.engine.validateChecksum(img.arch["arm64"].disk.checksum, diskPath); err != nil {
+	// 	return err
+	// }
 
-	if err := img.engine.validateChecksum(img.arch["arm64"].disk.checksum, diskPath); err != nil {
-		return err
-	}
+	// kernelPath := path.Join(img.path, "kernel")
+	// if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].kernel.url, kernelPath); err != nil {
+	// 	return err
+	// }
 
-	kernelPath := path.Join(imagePath, "kernel")
-	if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].kernel.url, kernelPath); err != nil {
-		return err
-	}
+	// if err := img.engine.validateChecksum(img.arch["arm64"].kernel.checksum, kernelPath); err != nil {
+	// 	return err
+	// }
 
-	if err := img.engine.validateChecksum(img.arch["arm64"].kernel.checksum, kernelPath); err != nil {
-		return err
-	}
+	// initialRamDiskPath := path.Join(img.path, "initial-ram-disk")
+	// if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].initialRamDisk.url, initialRamDiskPath); err != nil {
+	// 	return err
+	// }
 
-	initialRamDiskPath := path.Join(imagePath, "initial-ram-disk")
-	if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].initialRamDisk.url, initialRamDiskPath); err != nil {
-		return err
-	}
-
-	if err := img.engine.validateChecksum(img.arch["arm64"].initialRamDisk.checksum, initialRamDiskPath); err != nil {
-		return err
-	}
+	// if err := img.engine.validateChecksum(img.arch["arm64"].initialRamDisk.checksum, initialRamDiskPath); err != nil {
+	// 	return err
+	// }
 
 	return nil
+}
+
+// ENGINE
+
+func (eng *Engine) FindImage(name string) *Image {
+	image, exist := eng.images[name]
+	if !exist {
+		return nil
+	}
+
+	return image
+}
+
+func (eng *Engine) ListImages() []*Image {
+	images := make([]*Image, 0, len(eng.images))
+	for _, img := range eng.images {
+		images = append(images, img)
+	}
+
+	return images
 }

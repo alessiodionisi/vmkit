@@ -23,31 +23,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type removeOptions struct {
+type restartOptions struct {
 	*globalOptions
 	name string
 }
 
-func newRemoveCommand() *cobra.Command {
+func newRestartCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.ExactArgs(1),
-		Short: "Remove a virtual machine",
-		Use:   "remove [name]",
-		Aliases: []string{
-			"rm",
-		},
+		Short: "Restart a running virtual machine",
+		Use:   "restart [name]",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalOptions, err := newGlobalOptions(cmd)
 			if err != nil {
 				return err
 			}
 
-			opts := &removeOptions{
+			opts := &restartOptions{
 				name:          args[0],
 				globalOptions: globalOptions,
 			}
 
-			if err := runRemove(opts); err != nil {
+			if err := runRestart(opts); err != nil {
 				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
@@ -59,7 +56,7 @@ func newRemoveCommand() *cobra.Command {
 	return cmd
 }
 
-func runRemove(opts *removeOptions) error {
+func runRestart(opts *restartOptions) error {
 	eng, err := newEngine(opts.globalOptions)
 	if err != nil {
 		return err
@@ -73,5 +70,9 @@ func runRemove(opts *removeOptions) error {
 		return fmt.Errorf(`virtual machine "%s" not found`, opts.name)
 	}
 
-	return vm.Remove()
+	if err := vm.Stop(); err != nil {
+		return err
+	}
+
+	return vm.Start()
 }

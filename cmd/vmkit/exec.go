@@ -19,35 +19,37 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-type removeOptions struct {
+type execOptions struct {
 	*globalOptions
-	name string
+	name    string
+	command string
 }
 
-func newRemoveCommand() *cobra.Command {
+func newExecCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Args:  cobra.ExactArgs(1),
-		Short: "Remove a virtual machine",
-		Use:   "remove [name]",
-		Aliases: []string{
-			"rm",
-		},
+		Args: cobra.MinimumNArgs(2),
+		Example: `  Execute "uname -a" in the virtual machine:
+    vmkit exec vm1 -- uname -a`,
+		Short: "Execute a command in a running virtual machine",
+		Use:   "exec [name] [command]",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalOptions, err := newGlobalOptions(cmd)
 			if err != nil {
 				return err
 			}
 
-			opts := &removeOptions{
+			opts := &execOptions{
 				name:          args[0],
+				command:       strings.Join(args[1:], " "),
 				globalOptions: globalOptions,
 			}
 
-			if err := runRemove(opts); err != nil {
+			if err := runExec(opts); err != nil {
 				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
@@ -56,14 +58,13 @@ func newRemoveCommand() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().Bool("command", false, "prints the ssh command to connect")
+
 	return cmd
 }
 
-func runRemove(opts *removeOptions) error {
+func runExec(opts *execOptions) error {
 	eng, err := newEngine(opts.globalOptions)
-	if err != nil {
-		return err
-	}
 	if err != nil {
 		return err
 	}
@@ -73,5 +74,5 @@ func runRemove(opts *removeOptions) error {
 		return fmt.Errorf(`virtual machine "%s" not found`, opts.name)
 	}
 
-	return vm.Remove()
+	return vm.Exec(opts.command)
 }

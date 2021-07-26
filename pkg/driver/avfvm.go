@@ -17,12 +17,7 @@
 package driver
 
 import (
-	"encoding/base64"
-	"fmt"
 	"os/exec"
-	"strings"
-
-	"github.com/adnsio/vmkit/pkg/config"
 )
 
 const (
@@ -36,65 +31,65 @@ type AVFVM struct {
 func (d *AVFVM) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{}
 
-	if opts.Config.Spec.BootLoader.Linux == nil {
-		return nil, fmt.Errorf("%w, linux boot loader is mandatory with avfvm", config.ErrInvalidBootLoaderConfiguration)
-	}
+	// if opts.Config.Spec.BootLoader.Linux == nil {
+	// 	return nil, fmt.Errorf("%w, linux boot loader is mandatory with avfvm", config.ErrInvalidBootLoaderConfiguration)
+	// }
 
-	cmdArgs = append(cmdArgs, "--cpu-count", fmt.Sprint(opts.Config.Spec.CPU))
-	cmdArgs = append(cmdArgs, "--linux-kernel", opts.Config.Spec.BootLoader.Linux.Kernel)
-	cmdArgs = append(cmdArgs, "--linux-initial-ramdisk", opts.Config.Spec.BootLoader.Linux.InitialRamdisk)
+	// cmdArgs = append(cmdArgs, "--cpu-count", fmt.Sprint(opts.Config.Spec.CPU))
+	// cmdArgs = append(cmdArgs, "--linux-kernel", opts.Config.Spec.BootLoader.Linux.Kernel)
+	// cmdArgs = append(cmdArgs, "--linux-initial-ramdisk", opts.Config.Spec.BootLoader.Linux.InitialRamdisk)
 
-	var linuxCommandLine []string
+	// var linuxCommandLine []string
 
-	if opts.Config.Spec.BootLoader.Linux.CommandLine != "" {
-		linuxCommandLine = append(linuxCommandLine, opts.Config.Spec.BootLoader.Linux.CommandLine)
-	}
+	// if opts.Config.Spec.BootLoader.Linux.CommandLine != "" {
+	// 	linuxCommandLine = append(linuxCommandLine, opts.Config.Spec.BootLoader.Linux.CommandLine)
+	// }
 
-	if opts.Config.Spec.CloudInit != nil {
-		// CLOUD INIT - DATA SOURCE
-		linuxCommandLine = append(linuxCommandLine, fmt.Sprintf("ds=nocloud;h=%s;i=%s", opts.Config.Metadata.Name, opts.Config.Metadata.Name))
+	// if opts.Config.Spec.CloudInit != nil {
+	// 	// CLOUD INIT - DATA SOURCE
+	// 	linuxCommandLine = append(linuxCommandLine, fmt.Sprintf("ds=nocloud;h=%s;i=%s", opts.Config.Metadata.Name, opts.Config.Metadata.Name))
 
-		// CLOUD INIT - NETWORK CONFIGURATION
-		if opts.Config.Spec.CloudInit.NetworkConfiguration != "" {
-			linuxCommandLine = append(
-				linuxCommandLine,
-				fmt.Sprintf("network-config=%s",
-					base64.StdEncoding.EncodeToString([]byte(opts.Config.Spec.CloudInit.NetworkConfiguration)),
-				),
-			)
-		}
+	// 	// CLOUD INIT - NETWORK CONFIGURATION
+	// 	if opts.Config.Spec.CloudInit.NetworkConfiguration != "" {
+	// 		linuxCommandLine = append(
+	// 			linuxCommandLine,
+	// 			fmt.Sprintf("network-config=%s",
+	// 				base64.StdEncoding.EncodeToString([]byte(opts.Config.Spec.CloudInit.NetworkConfiguration)),
+	// 			),
+	// 		)
+	// 	}
 
-		// CLOUD INIT - USER DATA
-		if opts.Config.Spec.CloudInit.UserData != "" {
-			linuxCommandLine = append(linuxCommandLine, fmt.Sprintf("cc: %s end_cc", opts.Config.Spec.CloudInit.UserData))
-		}
-	}
+	// 	// CLOUD INIT - USER DATA
+	// 	if opts.Config.Spec.CloudInit.UserData != "" {
+	// 		linuxCommandLine = append(linuxCommandLine, fmt.Sprintf("cc: %s end_cc", opts.Config.Spec.CloudInit.UserData))
+	// 	}
+	// }
 
-	linuxCommandLineString := strings.Join(linuxCommandLine, " ")
+	// linuxCommandLineString := strings.Join(linuxCommandLine, " ")
 
-	if !strings.Contains(linuxCommandLineString, "console=hvc0") {
-		return nil, fmt.Errorf(
-			`%w, linux command line "console=hvc0" is mandatory with avfvm`,
-			config.ErrInvalidBootLoaderConfiguration,
-		)
-	}
+	// if !strings.Contains(linuxCommandLineString, "console=hvc0") {
+	// 	return nil, fmt.Errorf(
+	// 		`%w, linux command line "console=hvc0" is mandatory with avfvm`,
+	// 		config.ErrInvalidBootLoaderConfiguration,
+	// 	)
+	// }
 
-	if opts.Config.Spec.CPU > 1 && !strings.Contains(linuxCommandLineString, "irqaffinity=0") {
-		return nil, fmt.Errorf(
-			`%w, linux command line "irqaffinity=0" is needed to fix sync problems with more than one cpu with avfvm`,
-			config.ErrInvalidBootLoaderConfiguration,
-		)
-	}
+	// if opts.Config.Spec.CPU > 1 && !strings.Contains(linuxCommandLineString, "irqaffinity=0") {
+	// 	return nil, fmt.Errorf(
+	// 		`%w, linux command line "irqaffinity=0" is needed to fix sync problems with more than one cpu with avfvm`,
+	// 		config.ErrInvalidBootLoaderConfiguration,
+	// 	)
+	// }
 
-	cmdArgs = append(cmdArgs, "--linux-command-line", linuxCommandLineString)
+	// cmdArgs = append(cmdArgs, "--linux-command-line", linuxCommandLineString)
 
-	for _, disk := range opts.Config.Spec.Disks {
-		cmdArgs = append(cmdArgs, "--disk-image", disk.Path)
-	}
+	// for _, disk := range opts.Config.Spec.Disks {
+	// 	cmdArgs = append(cmdArgs, "--disk-image", disk.Path)
+	// }
 
-	for _, network := range opts.Config.Spec.Networks {
-		cmdArgs = append(cmdArgs, "--network", fmt.Sprintf("nat,macAddress=%s", network.MACAddress))
-	}
+	// for _, network := range opts.Config.Spec.Networks {
+	// 	cmdArgs = append(cmdArgs, "--network", fmt.Sprintf("nat,macAddress=%s", network.MACAddress))
+	// }
 
 	return exec.Command(
 		d.executableName,
@@ -123,7 +118,7 @@ func NewAVFVM(
 	}
 
 	if !d.supported() {
-		return nil, ErrNotSupported
+		return nil, ErrExecutableNotFound
 	}
 
 	return d, nil
