@@ -22,16 +22,11 @@ import (
 	"os"
 	"path"
 
-	"github.com/adnsio/vmkit/pkg/engine/bios/ovmf"
 	"github.com/adnsio/vmkit/pkg/engine/bios/qemuefi"
 )
 
 func (eng *Engine) qemuEFIBiosPath() string {
 	return path.Join(eng.biosPath(), "QEMU_EFI.fd")
-}
-
-func (eng *Engine) qovmfBiosPath() string {
-	return path.Join(eng.biosPath(), "OVMF.fd")
 }
 
 func (eng *Engine) checkAndWriteBiosFiles() error {
@@ -54,20 +49,6 @@ func (eng *Engine) checkAndWriteBiosFiles() error {
 			fmt.Fprintln(eng.writer, "Extracting qemu efi bios")
 
 			if err := os.WriteFile(qemuEFIBiosPath, qemuefi.Bytes, 0644); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-
-	ovmfBiosPath := eng.qovmfBiosPath()
-	_, err = os.Stat(ovmfBiosPath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintln(eng.writer, "Extracting ovmf bios")
-
-			if err := os.WriteFile(ovmfBiosPath, ovmf.Bytes, 0644); err != nil {
 				return err
 			}
 		} else {

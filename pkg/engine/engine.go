@@ -267,7 +267,6 @@ func New(opts *NewOptions) (*Engine, error) {
 		var err error
 		engine.driver, err = driver.NewQEMU(&driver.NewQEMUOptions{
 			ExecutableName:  opts.DriverExecutableName,
-			OVMFBiosPath:    engine.qovmfBiosPath(),
 			QEMUEFIBiosPath: engine.qemuEFIBiosPath(),
 			Writer:          engine.writer,
 		})

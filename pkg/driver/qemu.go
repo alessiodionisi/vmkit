@@ -26,7 +26,6 @@ import (
 
 type NewQEMUOptions struct {
 	ExecutableName  string
-	OVMFBiosPath    string
 	QEMUEFIBiosPath string
 	Writer          io.Writer
 }
@@ -56,7 +55,6 @@ func (q *QEMU) exist() bool {
 func (d *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{
 		"-accel", d.accelerator, // enable apple hypervisor.framework acceleration
-		"-bios", d.biosPath, // sets the bios
 		"-cpu", d.cpu, // sets the emulated cpu
 		"-device", "qemu-xhci", // adds a PCI bus for USB devices
 		"-m", fmt.Sprint(opts.Memory), // sets the memory available
@@ -64,6 +62,11 @@ func (d *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 		"-nographic",             // use stdio for the serial input and output
 		"-rtc", "base=localtime", // sync RTC clock with host time
 		"-smp", fmt.Sprint(opts.CPU), // sets the number of CPUs
+	}
+
+	if d.biosPath != "" {
+		// sets the bios
+		cmdArgs = append(cmdArgs, "-bios", d.biosPath)
 	}
 
 	for i, disk := range opts.Disks {
@@ -102,7 +105,6 @@ func (d *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 func NewQEMU(opts *NewQEMUOptions) (Driver, error) {
 	qemu := &QEMU{
 		executableName: opts.ExecutableName,
-		biosPath:       opts.OVMFBiosPath,
 		writer:         opts.Writer,
 	}
 
@@ -125,7 +127,6 @@ func NewQEMU(opts *NewQEMUOptions) (Driver, error) {
 			return nil, ErrUnsupportedArchitecture
 		}
 
-		qemu.biosPath = opts.OVMFBiosPath
 		qemu.cpu = "host"
 		qemu.machine = "q35"
 

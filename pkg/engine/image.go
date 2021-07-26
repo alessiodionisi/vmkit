@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 )
 
 type urlAndHash struct {
@@ -96,8 +97,12 @@ func (img *Image) Pull() error {
 		return err
 	}
 
-	// TODO: download the right arch
-	if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].disk.url, img.diskPath()); err != nil {
+	arch, exist := img.arch[runtime.GOARCH]
+	if !exist {
+		return ErrUnsupportedArchitecture
+	}
+
+	if err := img.engine.downloadAndPrintProgress(arch.disk.url, img.diskPath()); err != nil {
 		return err
 	}
 
