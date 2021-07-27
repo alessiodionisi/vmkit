@@ -88,9 +88,24 @@ func newRootCommand() (*cobra.Command, error) {
 		}
 	}
 
-	cmd.PersistentFlags().String("config-path", defaultConfigPath, "configuration path")
-	cmd.PersistentFlags().String("driver-executable-name", defaultDriverExecutableName, "driver executable name")
-	cmd.PersistentFlags().String("driver", string(defaultDriver), "driver to use (qemu or avfvm)")
+	configPathEnv := os.Getenv("VMKIT_CONFIG_PATH")
+	if configPathEnv != "" {
+		defaultConfigPath = configPathEnv
+	}
+
+	driverEnv := os.Getenv("VMKIT_DRIVER")
+	if driverEnv != "" {
+		defaultDriver = engine.Driver(driverEnv)
+	}
+
+	driverExecutableNameEnv := os.Getenv("VMKIT_DRIVER_EXECUTABLE_NAME")
+	if driverExecutableNameEnv != "" {
+		defaultDriverExecutableName = driverExecutableNameEnv
+	}
+
+	cmd.PersistentFlags().String("config-path", defaultConfigPath, "configuration path (env VMKIT_CONFIG_PATH)")
+	cmd.PersistentFlags().String("driver-executable-name", defaultDriverExecutableName, "driver executable name (env VMKIT_DRIVER_EXECUTABLE_NAME)")
+	cmd.PersistentFlags().String("driver", string(defaultDriver), "driver to use (env VMKIT_DRIVER)")
 
 	return cmd, nil
 }

@@ -31,13 +31,6 @@ import (
 	"github.com/cheggaaa/pb/v3"
 )
 
-type Driver string
-
-const (
-	DriverAVFVM Driver = "avfvm"
-	DriverQEMU  Driver = "qemu"
-)
-
 type NewOptions struct {
 	Driver               Driver
 	DriverExecutableName string
@@ -255,14 +248,6 @@ func New(opts *NewOptions) (*Engine, error) {
 		writer: opts.Writer,
 	}
 
-	if err := engine.reloadImages(); err != nil {
-		return nil, err
-	}
-
-	if err := engine.reloadVirtualMachines(); err != nil {
-		return nil, err
-	}
-
 	switch Driver(opts.Driver) {
 	case DriverQEMU:
 		var err error
@@ -277,6 +262,14 @@ func New(opts *NewOptions) (*Engine, error) {
 		}
 	default:
 		return nil, ErrInvalidDriver
+	}
+
+	if err := engine.reloadImages(); err != nil {
+		return nil, err
+	}
+
+	if err := engine.reloadVirtualMachines(); err != nil {
+		return nil, err
 	}
 
 	return engine, nil
