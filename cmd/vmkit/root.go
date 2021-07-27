@@ -21,6 +21,7 @@ import (
 	"path"
 	"runtime"
 
+	"github.com/adnsio/vmkit/pkg/driver/qemu"
 	"github.com/adnsio/vmkit/pkg/engine"
 	"github.com/spf13/cobra"
 )
@@ -77,10 +78,10 @@ func newRootCommand() (*cobra.Command, error) {
 	} else {
 		switch runtime.GOARCH {
 		case "arm64":
-			defaultDriverExecutableName = "qemu-system-aarch64"
+			defaultDriverExecutableName = qemu.Aarch64ExecutableName
 
 		case "amd64":
-			defaultDriverExecutableName = "qemu-system-x86_64"
+			defaultDriverExecutableName = qemu.X86_64ExecutableName
 
 		default:
 			return nil, ErrUnsupportedArchitecture

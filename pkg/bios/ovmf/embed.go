@@ -14,21 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package driver
+package ovmf
 
-import (
-	"os/exec"
-)
+import _ "embed"
 
-type CommandOptions struct {
-	CloudInitISO   string
-	CPU            int
-	Disks          []string
-	Memory         int
-	SSHPortForward int
-}
-
-type Driver interface {
-	Command(opts *CommandOptions) (*exec.Cmd, error)
-	// ExpandDisk(name string, size int) error
-}
+//go:embed OVMF_CODE.fd
+var Bytes []byte

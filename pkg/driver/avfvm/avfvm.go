@@ -18,6 +18,8 @@ package driver
 
 import (
 	"os/exec"
+
+	"github.com/adnsio/vmkit/pkg/driver"
 )
 
 const (
@@ -28,7 +30,7 @@ type AVFVM struct {
 	executableName string
 }
 
-func (d *AVFVM) Command(opts *CommandOptions) (*exec.Cmd, error) {
+func (d *AVFVM) Command(opts *driver.CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{}
 
 	// if opts.Config.Spec.BootLoader.Linux == nil {
@@ -112,13 +114,13 @@ func (d *AVFVM) supported() bool {
 
 func NewAVFVM(
 	executableName string,
-) (Driver, error) {
+) (*AVFVM, error) {
 	d := &AVFVM{
 		executableName: executableName,
 	}
 
 	if !d.supported() {
-		return nil, ErrExecutableNotFound
+		return nil, driver.ErrExecutableNotFound
 	}
 
 	return d, nil

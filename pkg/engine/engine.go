@@ -27,6 +27,7 @@ import (
 	"strconv"
 
 	"github.com/adnsio/vmkit/pkg/driver"
+	"github.com/adnsio/vmkit/pkg/driver/qemu"
 	"github.com/cheggaaa/pb/v3"
 )
 
@@ -199,9 +200,9 @@ func (eng *Engine) reloadImages() error {
 			engine: eng,
 			path:   eng.imagePath("ubuntu-hirsute"),
 
+			Description: "Ubuntu Server 21.04 (Hirsute Hippo)",
 			Name:        "ubuntu",
 			Version:     "hirsute",
-			Description: "Ubuntu Server 21.04 (Hirsute Hippo)",
 		},
 		"ubuntu:focal": {
 			arch: map[string]*archData{
@@ -237,9 +238,9 @@ func (eng *Engine) reloadImages() error {
 			engine: eng,
 			path:   eng.imagePath("ubuntu-focal"),
 
+			Description: "Ubuntu Server 20.04 LTS",
 			Name:        "ubuntu",
 			Version:     "focal",
-			Description: "Ubuntu Server 20.04 LTS",
 		},
 	}
 
@@ -265,8 +266,9 @@ func New(opts *NewOptions) (*Engine, error) {
 	switch Driver(opts.Driver) {
 	case DriverQEMU:
 		var err error
-		engine.driver, err = driver.NewQEMU(&driver.NewQEMUOptions{
+		engine.driver, err = qemu.New(&qemu.NewOptions{
 			ExecutableName:  opts.DriverExecutableName,
+			OVMFBiosPath:    engine.OVMFBiosPath(),
 			QEMUEFIBiosPath: engine.qemuEFIBiosPath(),
 			Writer:          engine.writer,
 		})

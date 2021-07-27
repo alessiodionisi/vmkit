@@ -1,0 +1,57 @@
+builds:
+  - id: vmkit
+    binary: vmkit
+    main: ./cmd/vmkit
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      # - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+  - id: avfvm
+    binary: avfvm
+    main: ./cmd/avfvm
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - allow_different_binary_count: true
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  name_template: "{{ .ShortCommit }}"
+
+brews:
+  - tap:
+      owner: adnsio
+      name: homebrew-tap
+    description: Spin up Linux VMs with QEMU and Apple virtualization framework
+    homepage: https://github.com/adnsio/vmkit
+    skip_upload: true
+    test: |
+      system "#{bin}/vmkit -h"
+    install: |
+      bin.install "vmkit"
+
+release:
+  github:
+    owner: adnsio
+    name: vmkit
+  disable: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

@@ -53,9 +53,9 @@ type vmConfig struct {
 }
 
 type VirtualMachine struct {
+	config *vmConfig
 	engine *Engine
 	path   string
-	config *vmConfig
 
 	Name string
 }
@@ -174,7 +174,7 @@ func (vm *VirtualMachine) Start() error {
 		return err
 	}
 
-	fmt.Fprintf(vm.engine.writer, "Running command: %s\n", strings.Join(cmd.Args, " "))
+	// fmt.Fprintf(vm.engine.writer, "Running command: %s\n", strings.Join(cmd.Args, " "))
 
 	// start the command
 	if err := cmd.Start(); err != nil {

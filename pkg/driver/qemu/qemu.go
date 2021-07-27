@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package driver
+package qemu
 
 import (
 	"fmt"
@@ -22,10 +22,18 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+
+	"github.com/adnsio/vmkit/pkg/driver"
 )
 
-type NewQEMUOptions struct {
+const (
+	Aarch64ExecutableName = "qemu-system-aarch64"
+	X86_64ExecutableName  = "qemu-system-x86_64"
+)
+
+type NewOptions struct {
 	ExecutableName  string
+	OVMFBiosPath    string
 	QEMUEFIBiosPath string
 	Writer          io.Writer
 }
@@ -39,7 +47,7 @@ type QEMU struct {
 	writer         io.Writer
 }
 
-func (q *QEMU) exist() bool {
+func (q *QEMU) lookExecutable() bool {
 	path, err := exec.LookPath(q.executableName)
 	if err != nil {
 		return false
@@ -52,7 +60,7 @@ func (q *QEMU) exist() bool {
 	return true
 }
 
-func (d *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
+func (d *QEMU) Command(opts *driver.CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{
 		"-accel", d.accelerator, // enable apple hypervisor.framework acceleration
 		"-cpu", d.cpu, // sets the emulated cpu
@@ -102,20 +110,20 @@ func (d *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	), nil
 }
 
-func NewQEMU(opts *NewQEMUOptions) (Driver, error) {
+func New(opts *NewOptions) (*QEMU, error) {
 	qemu := &QEMU{
 		executableName: opts.ExecutableName,
 		writer:         opts.Writer,
 	}
 
-	if !qemu.exist() {
-		return nil, ErrExecutableNotFound
+	if !qemu.lookExecutable() {
+		return nil, driver.ErrExecutableNotFound
 	}
 
 	switch {
 	case strings.Contains(qemu.executableName, "aarch64"):
 		if runtime.GOARCH != "arm64" {
-			return nil, ErrUnsupportedArchitecture
+			return nil, driver.ErrUnsupportedArchitecture
 		}
 
 		qemu.biosPath = opts.QEMUEFIBiosPath
@@ -124,14 +132,15 @@ func NewQEMU(opts *NewQEMUOptions) (Driver, error) {
 
 	case strings.Contains(qemu.executableName, "x86_64"):
 		if runtime.GOARCH != "amd64" {
-			return nil, ErrUnsupportedArchitecture
+			return nil, driver.ErrUnsupportedArchitecture
 		}
 
+		qemu.biosPath = opts.OVMFBiosPath
 		qemu.cpu = "host"
 		qemu.machine = "q35"
 
 	default:
-		return nil, ErrUnsupportedArchitecture
+		return nil, driver.ErrUnsupportedArchitecture
 	}
 
 	switch runtime.GOOS {
@@ -142,7 +151,7 @@ func NewQEMU(opts *NewQEMUOptions) (Driver, error) {
 		qemu.accelerator = "kvm"
 
 	default:
-		return nil, ErrUnsupportedOperatingSystem
+		return nil, driver.ErrUnsupportedOperatingSystem
 	}
 
 	return qemu, nil
