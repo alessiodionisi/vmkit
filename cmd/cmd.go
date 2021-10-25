@@ -1,28 +1,12 @@
-// Spin up Linux VMs with QEMU
-// Copyright (C) 2021 VMKit Authors
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-package main
+package cmd
 
 import (
 	"os"
 	"path"
 	"runtime"
 
-	"github.com/adnsio/vmkit/pkg/engine"
-	"github.com/adnsio/vmkit/pkg/qemu"
+	"github.com/adnsio/vmkit/engine"
+	"github.com/adnsio/vmkit/qemu"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +16,7 @@ type globalOptions struct {
 	configPath         string
 }
 
-func newRootCommand() (*cobra.Command, error) {
+func New() (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Short: "Spin up Linux VMs with QEMU",
 		Use:   "vmkit",

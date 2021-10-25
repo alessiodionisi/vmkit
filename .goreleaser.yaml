@@ -1,12 +1,6 @@
 builds:
-  - id: vmkit
-    binary: vmkit
-    main: ./cmd/vmkit
-    env:
-      - CGO_ENABLED=0
-    goos:
+  - goos:
       - linux
-      # - windows
       - darwin
     goarch:
       - amd64

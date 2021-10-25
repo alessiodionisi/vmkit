@@ -1,2 +1,2 @@
 build:
-	go build -o ./bin/vmkit ./cmd/vmkit
+	go build -o ./bin/vmkit .
