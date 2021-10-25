@@ -11,21 +11,21 @@ require (
 )
 
 require (
-	github.com/VividCortex/ewma v1.1.1 // indirect
-	github.com/fatih/color v1.10.0 // indirect
+	github.com/VividCortex/ewma v1.2.0 // indirect
+	github.com/fatih/color v1.13.0 // indirect
 	github.com/frankban/quicktest v1.13.0 // indirect
-	github.com/google/uuid v1.1.2 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/mattn/go-colorable v0.1.8 // indirect
-	github.com/mattn/go-isatty v0.0.12 // indirect
-	github.com/mattn/go-runewidth v0.0.12 // indirect
-	github.com/pierrec/lz4 v2.3.0+incompatible // indirect
-	github.com/pkg/xattr v0.4.1 // indirect
+	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
+	github.com/pkg/xattr v0.4.4 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/sirupsen/logrus v1.7.0 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/ulikunitz/xz v0.5.6 // indirect
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
-	gopkg.in/djherbis/times.v1 v1.2.0 // indirect
+	github.com/ulikunitz/xz v0.5.10 // indirect
+	golang.org/x/sys v0.0.0-20211025112917-711f33c9992c // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
