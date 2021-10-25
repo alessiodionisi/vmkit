@@ -53,6 +53,8 @@ func runList(opts *globalOptions) error {
 
 		tableRows = append(tableRows, []string{
 			vm.Name,
+			strings.ToLower(vm.Config.Image),
+			fmt.Sprintf("%d CPU, %d Memory", vm.Config.CPU, vm.Config.Memory),
 			strings.Title(string(status)),
 		})
 	}
@@ -61,6 +63,8 @@ func runList(opts *globalOptions) error {
 		writer: os.Stdout,
 		header: []string{
 			"Name",
+			"Image",
+			"Resources",
 			"Status",
 		},
 		rows: tableRows,

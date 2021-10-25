@@ -126,7 +126,7 @@ func (e *Engine) reloadVirtualMachines() error {
 
 			engine: e,
 			path:   e.virtualMachinePath(vmPath.Name()),
-			config: &virtualMachineConfig{},
+			Config: &VirtualMachineConfig{},
 		}
 
 		if err := virtualMachines[vmPath.Name()].loadConfigFile(); err != nil {
@@ -141,34 +141,96 @@ func (e *Engine) reloadVirtualMachines() error {
 
 func (e *Engine) reloadImages() error {
 	images := map[string]*Image{
-		"ubuntu:hirsute": {
+		"debian:bullseye": {
 			arch: map[string]*imageArchitecture{
 				"arm64": {
-					// kernel: &urlAndHash{
-					// 	url:      "http://cloud-images.ubuntu.com/hirsute/current/unpacked/hirsute-server-cloudimg-arm64-vmlinuz-generic",
-					// 	checksum: "6a101c5a63d472057ab4ae86c57485801eb025a8deb230b488054e23733bd90e",
-					// },
-					// initialRamDisk: &urlAndHash{
-					// 	url:      "http://cloud-images.ubuntu.com/hirsute/current/unpacked/hirsute-server-cloudimg-arm64-initrd-generic",
-					// 	checksum: "39b7807f99b2892dd4c376880b8e953da7286155e6a40938f3d5387b0dbdc39d",
-					// },
 					disk: &imageURLAndChecksum{
-						url:      "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-arm64.img",
-						checksum: "d58892cd801cb6434b8b5899c1960766e0b9d456a01f7b7d5104de35617ff0f7",
+						url: "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-arm64.qcow2",
 					},
 				},
 				"amd64": {
-					// kernel: &urlAndHash{
-					// 	url:      "http://cloud-images.ubuntu.com/hirsute/current/unpacked/hirsute-server-cloudimg-amd64-vmlinuz-generic",
-					// 	checksum: "",
-					// },
-					// initialRamDisk: &urlAndHash{
-					// 	url:      "http://cloud-images.ubuntu.com/hirsute/current/unpacked/hirsute-server-cloudimg-amd64-initrd-generic",
-					// 	checksum: "",
-					// },
 					disk: &imageURLAndChecksum{
-						url:      "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-amd64.img",
-						checksum: "",
+						url: "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-amd64.qcow2",
+					},
+				},
+			},
+			engine: e,
+			path:   e.imagePath("debian-bullseye"),
+
+			Description: "Debian 11 (Bullseye)",
+			Name:        "debian",
+			Version:     "bullseye",
+		},
+		"debian:buster": {
+			arch: map[string]*imageArchitecture{
+				"arm64": {
+					disk: &imageURLAndChecksum{
+						url: "https://cloud.debian.org/images/cloud/buster/latest/debian-10-generic-arm64.qcow2",
+					},
+				},
+				"amd64": {
+					disk: &imageURLAndChecksum{
+						url: "https://cloud.debian.org/images/cloud/buster/latest/debian-10-generic-amd64.qcow2",
+					},
+				},
+			},
+			engine: e,
+			path:   e.imagePath("debian-buster"),
+
+			Description: "Debian 10 (Buster)",
+			Name:        "debian",
+			Version:     "buster",
+		},
+		"ubuntu:jammy": {
+			arch: map[string]*imageArchitecture{
+				"arm64": {
+					disk: &imageURLAndChecksum{
+						url: "http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img",
+					},
+				},
+				"amd64": {
+					disk: &imageURLAndChecksum{
+						url: "http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img",
+					},
+				},
+			},
+			engine: e,
+			path:   e.imagePath("ubuntu-jammy"),
+
+			Description: "Ubuntu Server 22.04 (Jammy Jellyfish)",
+			Name:        "ubuntu",
+			Version:     "jammy",
+		},
+		"ubuntu:impish": {
+			arch: map[string]*imageArchitecture{
+				"arm64": {
+					disk: &imageURLAndChecksum{
+						url: "http://cloud-images.ubuntu.com/impish/current/impish-server-cloudimg-arm64.img",
+					},
+				},
+				"amd64": {
+					disk: &imageURLAndChecksum{
+						url: "http://cloud-images.ubuntu.com/impish/current/impish-server-cloudimg-amd64.img",
+					},
+				},
+			},
+			engine: e,
+			path:   e.imagePath("ubuntu-impish"),
+
+			Description: "Ubuntu Server 21.10 (Impish Indri)",
+			Name:        "ubuntu",
+			Version:     "impish",
+		},
+		"ubuntu:hirsute": {
+			arch: map[string]*imageArchitecture{
+				"arm64": {
+					disk: &imageURLAndChecksum{
+						url: "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-arm64.img",
+					},
+				},
+				"amd64": {
+					disk: &imageURLAndChecksum{
+						url: "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-amd64.img",
 					},
 				},
 			},
@@ -183,21 +245,19 @@ func (e *Engine) reloadImages() error {
 			arch: map[string]*imageArchitecture{
 				"arm64": {
 					disk: &imageURLAndChecksum{
-						url:      "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img",
-						checksum: "",
+						url: "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img",
 					},
 				},
 				"amd64": {
 					disk: &imageURLAndChecksum{
-						url:      "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img",
-						checksum: "",
+						url: "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img",
 					},
 				},
 			},
 			engine: e,
 			path:   e.imagePath("ubuntu-focal"),
 
-			Description: "Ubuntu Server 20.04 LTS",
+			Description: "Ubuntu Server 20.04 (Focal Fossa) LTS",
 			Name:        "ubuntu",
 			Version:     "focal",
 		},

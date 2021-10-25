@@ -38,15 +38,16 @@ const (
 	VirtualMachineStatusError   VirtualMachineStatus = "error"
 )
 
-type virtualMachineConfig struct {
-	CPU    int `json:"cpu"`
-	Memory int `json:"memory"`
+type VirtualMachineConfig struct {
+	CPU    int    `json:"cpu"`
+	Memory int    `json:"memory"`
+	Image  string `json:"image"`
 }
 
 type VirtualMachine struct {
-	Name string
+	Name   string
+	Config *VirtualMachineConfig
 
-	config *virtualMachineConfig
 	engine *Engine
 	path   string
 }
@@ -149,8 +150,8 @@ func (v *VirtualMachine) Start() error {
 
 	// use the driver to create the start command
 	cmd, err := v.engine.qemu.Command(&qemu.CommandOptions{
-		CPU:            v.config.CPU,
-		Memory:         v.config.Memory,
+		CPU:            v.Config.CPU,
+		Memory:         v.Config.Memory,
 		SSHPortForward: sshPort,
 
 		Disks: []string{
@@ -186,7 +187,7 @@ func (v *VirtualMachine) Start() error {
 
 // writeConfigFile writes the config file
 func (v *VirtualMachine) writeConfigFile() error {
-	configBytes, err := json.Marshal(v.config)
+	configBytes, err := json.Marshal(v.Config)
 	if err != nil {
 		return err
 	}
@@ -201,7 +202,7 @@ func (v *VirtualMachine) loadConfigFile() error {
 		return err
 	}
 
-	return json.Unmarshal(configBytes, v.config)
+	return json.Unmarshal(configBytes, v.Config)
 }
 
 func (v *VirtualMachine) sshPort() (int, error) {
@@ -502,9 +503,10 @@ func (e *Engine) CreateVirtualMachine(opts *CreateVirtualMachineOptions) (*Virtu
 
 		engine: e,
 		path:   virtualMachinePath,
-		config: &virtualMachineConfig{
+		Config: &VirtualMachineConfig{
 			CPU:    opts.CPU,
 			Memory: opts.Memory,
+			Image:  opts.Image,
 		},
 	}
 
@@ -565,7 +567,7 @@ func (e *Engine) CreateVirtualMachine(opts *CreateVirtualMachineOptions) (*Virtu
 	e.Printf("Creating cloud-init ISO\n")
 
 	// create cloud init data
-	cloudInitUserData := fmt.Sprintf("#cloud-config\nssh_authorized_keys:\n  - %s", string(publicKeyBytes))
+	cloudInitUserData := fmt.Sprintf("#cloud-config\n\nssh_authorized_keys:\n  - %s", string(publicKeyBytes))
 	cloudInitNetworkConfig := `version: 2
 ethernets:
   interface0:
