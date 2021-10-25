@@ -1,4 +1,4 @@
-// Spin up Linux VMs with QEMU and Apple virtualization framework
+// Spin up Linux VMs with QEMU
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,22 +20,18 @@ import (
 	"path"
 )
 
-func (eng *Engine) biosPath() string {
-	return path.Join(eng.path, "bios")
+func (e *Engine) imagesPath() string {
+	return path.Join(e.path, "image")
 }
 
-func (eng *Engine) imagesPath() string {
-	return path.Join(eng.path, "image")
+func (e *Engine) imagePath(name string) string {
+	return path.Join(e.imagesPath(), name)
 }
 
-func (eng *Engine) imagePath(name string) string {
-	return path.Join(eng.imagesPath(), name)
+func (e *Engine) virtualMachinesPath() string {
+	return path.Join(e.path, "virtual-machine")
 }
 
-func (eng *Engine) virtualMachinesPath() string {
-	return path.Join(eng.path, "virtual-machine")
-}
-
-func (eng *Engine) virtualMachinePath(name string) string {
-	return path.Join(eng.virtualMachinesPath(), name)
+func (e *Engine) virtualMachinePath(name string) string {
+	return path.Join(e.virtualMachinesPath(), name)
 }

@@ -1,4 +1,4 @@
-// Spin up Linux VMs with QEMU and Apple virtualization framework
+// Spin up Linux VMs with QEMU
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -26,16 +26,14 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/adnsio/vmkit/pkg/driver"
-	"github.com/adnsio/vmkit/pkg/driver/qemu"
+	"github.com/adnsio/vmkit/pkg/qemu"
 	"github.com/cheggaaa/pb/v3"
 )
 
 type NewOptions struct {
-	Driver               Driver
-	DriverExecutableName string
-	Path                 string
-	Writer               io.Writer
+	QEMUExecutableName string
+	Path               string
+	Writer             io.Writer
 }
 
 type CreateVirtualMachineOptions struct {
@@ -46,15 +44,15 @@ type CreateVirtualMachineOptions struct {
 }
 
 type Engine struct {
-	driver          driver.Driver
+	qemu            *qemu.QEMU
 	images          map[string]*Image
 	path            string
 	virtualMachines map[string]*VirtualMachine
 	writer          io.Writer
 }
 
-func (eng *Engine) validateChecksum(checksum string, name string) error {
-	fmt.Fprintf(eng.writer, "Validating checksum of %s\n", name)
+func (e *Engine) validateChecksum(checksum string, name string) error {
+	e.Printf("Validating checksum of %s\n", name)
 
 	file, err := os.Open(name)
 	if err != nil {
@@ -77,7 +75,7 @@ func (eng *Engine) validateChecksum(checksum string, name string) error {
 	return nil
 }
 
-func (eng *Engine) downloadAndPrintProgress(url string, name string) error {
+func (e *Engine) downloadAndPrintProgress(url string, name string) error {
 	file, err := os.Create(name)
 	if err != nil {
 		return err
@@ -96,11 +94,11 @@ func (eng *Engine) downloadAndPrintProgress(url string, name string) error {
 		return err
 	}
 
-	fmt.Fprintf(eng.writer, "Downloading %s\n", url)
+	e.Printf("Downloading %s\n", url)
 
 	// download the content
 	progressBar := pb.Full.New(contentLength)
-	progressBar.SetWriter(eng.writer)
+	progressBar.SetWriter(e.writer)
 
 	progressBar.Start()
 
@@ -121,8 +119,8 @@ func (eng *Engine) downloadAndPrintProgress(url string, name string) error {
 	return nil
 }
 
-func (eng *Engine) reloadVirtualMachines() error {
-	virtualMachinesPath := eng.virtualMachinesPath()
+func (e *Engine) reloadVirtualMachines() error {
+	virtualMachinesPath := e.virtualMachinesPath()
 
 	virtualMachinePaths, err := os.ReadDir(virtualMachinesPath)
 	if err != nil {
@@ -140,11 +138,11 @@ func (eng *Engine) reloadVirtualMachines() error {
 		}
 
 		virtualMachines[vmPath.Name()] = &VirtualMachine{
-			engine: eng,
-			path:   eng.virtualMachinePath(vmPath.Name()),
-			config: &vmConfig{},
-
 			Name: vmPath.Name(),
+
+			engine: e,
+			path:   e.virtualMachinePath(vmPath.Name()),
+			config: &virtualMachineConfig{},
 		}
 
 		if err := virtualMachines[vmPath.Name()].loadConfigFile(); err != nil {
@@ -152,15 +150,15 @@ func (eng *Engine) reloadVirtualMachines() error {
 		}
 	}
 
-	eng.virtualMachines = virtualMachines
+	e.virtualMachines = virtualMachines
 
 	return nil
 }
 
-func (eng *Engine) reloadImages() error {
+func (e *Engine) reloadImages() error {
 	images := map[string]*Image{
 		"ubuntu:hirsute": {
-			arch: map[string]*archData{
+			arch: map[string]*imageArchitecture{
 				"arm64": {
 					// kernel: &urlAndHash{
 					// 	url:      "http://cloud-images.ubuntu.com/hirsute/current/unpacked/hirsute-server-cloudimg-arm64-vmlinuz-generic",
@@ -170,7 +168,7 @@ func (eng *Engine) reloadImages() error {
 					// 	url:      "http://cloud-images.ubuntu.com/hirsute/current/unpacked/hirsute-server-cloudimg-arm64-initrd-generic",
 					// 	checksum: "39b7807f99b2892dd4c376880b8e953da7286155e6a40938f3d5387b0dbdc39d",
 					// },
-					disk: &urlAndHash{
+					disk: &imageURLAndChecksum{
 						url:      "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-arm64.img",
 						checksum: "d58892cd801cb6434b8b5899c1960766e0b9d456a01f7b7d5104de35617ff0f7",
 					},
@@ -184,52 +182,36 @@ func (eng *Engine) reloadImages() error {
 					// 	url:      "http://cloud-images.ubuntu.com/hirsute/current/unpacked/hirsute-server-cloudimg-amd64-initrd-generic",
 					// 	checksum: "",
 					// },
-					disk: &urlAndHash{
+					disk: &imageURLAndChecksum{
 						url:      "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-amd64.img",
 						checksum: "",
 					},
 				},
 			},
-			engine: eng,
-			path:   eng.imagePath("ubuntu-hirsute"),
+			engine: e,
+			path:   e.imagePath("ubuntu-hirsute"),
 
 			Description: "Ubuntu Server 21.04 (Hirsute Hippo)",
 			Name:        "ubuntu",
 			Version:     "hirsute",
 		},
 		"ubuntu:focal": {
-			arch: map[string]*archData{
+			arch: map[string]*imageArchitecture{
 				"arm64": {
-					// kernel: &urlAndHash{
-					// 	url:      "http://cloud-images.ubuntu.com/focal/current/unpacked/focal-server-cloudimg-arm64-vmlinuz-generic",
-					// 	checksum: "",
-					// },
-					// initialRamDisk: &urlAndHash{
-					// 	url:      "http://cloud-images.ubuntu.com/focal/current/unpacked/focal-server-cloudimg-arm64-initrd-generic",
-					// 	checksum: "",
-					// },
-					disk: &urlAndHash{
+					disk: &imageURLAndChecksum{
 						url:      "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img",
 						checksum: "",
 					},
 				},
 				"amd64": {
-					// kernel: &urlAndHash{
-					// 	url:      "http://cloud-images.ubuntu.com/focal/current/unpacked/focal-server-cloudimg-amd64-vmlinuz-generic",
-					// 	checksum: "",
-					// },
-					// initialRamDisk: &urlAndHash{
-					// 	url:      "http://cloud-images.ubuntu.com/focal/current/unpacked/focal-server-cloudimg-amd64-initrd-generic",
-					// 	checksum: "",
-					// },
-					disk: &urlAndHash{
+					disk: &imageURLAndChecksum{
 						url:      "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img",
 						checksum: "",
 					},
 				},
 			},
-			engine: eng,
-			path:   eng.imagePath("ubuntu-focal"),
+			engine: e,
+			path:   e.imagePath("ubuntu-focal"),
 
 			Description: "Ubuntu Server 20.04 LTS",
 			Name:        "ubuntu",
@@ -237,9 +219,13 @@ func (eng *Engine) reloadImages() error {
 		},
 	}
 
-	eng.images = images
+	e.images = images
 
 	return nil
+}
+
+func (e *Engine) Printf(format string, a ...interface{}) (n int, err error) {
+	return fmt.Fprintf(e.writer, format, a...)
 }
 
 func New(opts *NewOptions) (*Engine, error) {
@@ -248,20 +234,12 @@ func New(opts *NewOptions) (*Engine, error) {
 		writer: opts.Writer,
 	}
 
-	switch Driver(opts.Driver) {
-	case DriverQEMU:
-		var err error
-		engine.driver, err = qemu.New(&qemu.NewOptions{
-			ExecutableName:  opts.DriverExecutableName,
-			OVMFBiosPath:    engine.OVMFBiosPath(),
-			QEMUEFIBiosPath: engine.qemuEFIBiosPath(),
-			Writer:          engine.writer,
-		})
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, ErrInvalidDriver
+	var err error
+	engine.qemu, err = qemu.New(&qemu.NewOptions{
+		ExecutableName: opts.QEMUExecutableName,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	if err := engine.reloadImages(); err != nil {

@@ -1,4 +1,4 @@
-// Spin up Linux VMs with QEMU and Apple virtualization framework
+// Spin up Linux VMs with QEMU
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,39 +18,36 @@ package engine
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path"
 	"runtime"
 )
 
-type urlAndHash struct {
+type imageURLAndChecksum struct {
 	checksum string
 	url      string
 }
 
-type archData struct {
-	disk           *urlAndHash
-	initialRamDisk *urlAndHash
-	kernel         *urlAndHash
+type imageArchitecture struct {
+	disk *imageURLAndChecksum
 }
 
 type Image struct {
-	arch   map[string]*archData
-	engine *Engine
-	path   string
-
 	Description string
 	Name        string
 	Version     string
+
+	arch   map[string]*imageArchitecture
+	engine *Engine
+	path   string
 }
 
-func (img *Image) makePath() error {
-	return os.MkdirAll(img.path, 0755)
+func (i *Image) makePath() error {
+	return os.MkdirAll(i.path, 0755)
 }
 
-func (img *Image) Pulled() (bool, error) {
-	if _, err := os.Stat(img.diskPath()); err != nil {
+func (i *Image) Pulled() (bool, error) {
+	if _, err := os.Stat(i.diskPath()); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}
@@ -58,75 +55,50 @@ func (img *Image) Pulled() (bool, error) {
 		return false, err
 	}
 
-	// if _, err := os.Stat(path.Join(img.path, "kernel")); err != nil {
-	// 	if errors.Is(err, os.ErrNotExist) {
-	// 		return false, nil
-	// 	}
-
-	// 	return false, err
-	// }
-
-	// if _, err := os.Stat(path.Join(img.path, "initial-ram-disk")); err != nil {
-	// 	if errors.Is(err, os.ErrNotExist) {
-	// 		return false, nil
-	// 	}
-
-	// 	return false, err
-	// }
-
 	return true, nil
 }
 
-func (img *Image) NameAndVersion() string {
-	return fmt.Sprintf("%s:%s", img.Name, img.Version)
+func (i *Image) diskPath() string {
+	return path.Join(i.path, "disk.qcow2")
 }
 
-func (img *Image) diskPath() string {
-	return path.Join(img.path, "disk.img")
-}
+func (i *Image) Pull() error {
+	i.engine.Printf("Pulling image \"%s:%s\"\n", i.Name, i.Version)
 
-func (img *Image) Pull() error {
-	fmt.Fprintf(img.engine.writer, "Pulling image \"%s\"\n", img.NameAndVersion())
-
-	// imagePath, err := img.engine.imagePath(img.NameAndVersion())
-	// if err != nil {
-	// 	return err
-	// }
-
-	if err := img.makePath(); err != nil {
+	if err := i.makePath(); err != nil {
 		return err
 	}
 
-	arch, exist := img.arch[runtime.GOARCH]
+	arch, exist := i.arch[runtime.GOARCH]
 	if !exist {
 		return ErrUnsupportedArchitecture
 	}
 
-	if err := img.engine.downloadAndPrintProgress(arch.disk.url, img.diskPath()); err != nil {
+	if err := i.engine.downloadAndPrintProgress(arch.disk.url, i.diskPath()); err != nil {
 		return err
 	}
 
-	// if err := img.engine.validateChecksum(img.arch["arm64"].disk.checksum, diskPath); err != nil {
-	// 	return err
-	// }
-
-	// kernelPath := path.Join(img.path, "kernel")
-	// if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].kernel.url, kernelPath); err != nil {
-	// 	return err
-	// }
-
-	// if err := img.engine.validateChecksum(img.arch["arm64"].kernel.checksum, kernelPath); err != nil {
-	// 	return err
-	// }
-
-	// initialRamDiskPath := path.Join(img.path, "initial-ram-disk")
-	// if err := img.engine.downloadAndPrintProgress(img.arch["arm64"].initialRamDisk.url, initialRamDiskPath); err != nil {
-	// 	return err
-	// }
-
-	// if err := img.engine.validateChecksum(img.arch["arm64"].initialRamDisk.checksum, initialRamDiskPath); err != nil {
+	// if err := img.engine.validateChecksum(arch.disk.checksum, img.diskPath()); err != nil {
 	// 	return err
 	// }
 
 	return nil
+}
+
+func (e *Engine) FindImage(name string) *Image {
+	image, exist := e.images[name]
+	if !exist {
+		return nil
+	}
+
+	return image
+}
+
+func (eng *Engine) ListImages() []*Image {
+	images := make([]*Image, 0, len(eng.images))
+	for _, img := range eng.images {
+		images = append(images, img)
+	}
+
+	return images
 }

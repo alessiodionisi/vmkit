@@ -1,4 +1,4 @@
-// Spin up Linux VMs with QEMU and Apple virtualization framework
+// Spin up Linux VMs with QEMU
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef storage_device_h
-#define storage_device_h
+package qemu
 
-#import <Foundation/Foundation.h>
-#import <Virtualization/Virtualization.h>
+import "errors"
 
-void *VZDiskImageStorageDeviceAttachment_init(const char *diskImageURL,
-                                              bool readOnly, void **error);
-void *VZVirtioBlockDeviceConfiguration_init(void *attachment);
-
-#endif /* storage_device_h */
+var (
+	ErrARM64Emulation             = errors.New("qemu: you are trying to emulate arm64")
+	ErrExecutableNotFound         = errors.New("qemu: executable not found")
+	ErrUnsupportedArchitecture    = errors.New("qemu: unsupported architecture")
+	ErrUnsupportedOperatingSystem = errors.New("qemu: unsupported operating system")
+	ErrX8664Emulation             = errors.New("qemu: you are trying to emulate x86_64")
+)

@@ -1,6 +1,6 @@
 # VMKit
 
-Spin up Linux VMs with QEMU _(stable and working on arm64 and amd64)_ and Apple virtualization framework _(not stable)_.
+Spin up Linux VMs with QEMU.
 
 ![Docker running on ARM64 Virtual Machine](/docs/docker-on-vm1.png)
 _In the above image: Docker running on ARM64 Ubuntu Virtual Machine_
@@ -20,14 +20,14 @@ _TODO: docs coming soon_
 
 ## Tested on
 
-- macOS on ARM64 _(Apple Silicon)_ with a [custom build of QEMU](https://github.com/adnsio/qemu/tree/apple-silicon) and AMD64 with the latest stable version of QEMU
+- macOS on ARM64 _(Apple Silicon)_ and AMD64 with the latest stable version of QEMU
 
 ## Building
 
 ### Requirements
 
-- Go 1.16.x
+- Go 1.17.x
 
 ### How to
 
-Simply use `go run ./cmd/vmkit` to build and run VMKit directly or `make build-vmkit` to build a binary for your system.
+Simply use `go run ./cmd/vmkit` to build and run VMKit directly or `make build` to build a binary for your system.

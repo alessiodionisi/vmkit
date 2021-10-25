@@ -1,4 +1,4 @@
-// Spin up Linux VMs with QEMU and Apple virtualization framework
+// Spin up Linux VMs with QEMU
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,6 @@ import "errors"
 var (
 	ErrImageNotFound                = errors.New("engine: image not found")
 	ErrInvalidChecksum              = errors.New("engine: invalid checksum")
-	ErrInvalidDriver                = errors.New("engine: invalid driver")
 	ErrInvalidSSHPort               = errors.New("engine: invalid ssh port")
 	ErrUnsupportedArchitecture      = errors.New("engine: unsupported architecture")
 	ErrVirtualMachineAlreadyExist   = errors.New("engine: virtual machine already exist")

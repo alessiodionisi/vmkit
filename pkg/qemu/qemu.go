@@ -1,4 +1,4 @@
-// Spin up Linux VMs with QEMU and Apple virtualization framework
+// Spin up Linux VMs with QEMU
 // Copyright (C) 2021 VMKit Authors
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,33 +18,34 @@ package qemu
 
 import (
 	"fmt"
-	"io"
 	"os/exec"
 	"runtime"
 	"strings"
-
-	"github.com/adnsio/vmkit/pkg/driver"
 )
 
 const (
 	Aarch64ExecutableName = "qemu-system-aarch64"
-	X86_64ExecutableName  = "qemu-system-x86_64"
+	X8664ExecutableName   = "qemu-system-x86_64"
 )
 
+type CommandOptions struct {
+	CDRoms         []string
+	CPU            int
+	Disks          []string
+	Memory         int
+	SSHPortForward int
+}
+
 type NewOptions struct {
-	ExecutableName  string
-	OVMFBiosPath    string
-	QEMUEFIBiosPath string
-	Writer          io.Writer
+	ExecutableName string
 }
 
 type QEMU struct {
 	accelerator    string
-	biosPath       string
+	bios           string
 	cpu            string
 	executableName string
 	machine        string
-	writer         io.Writer
 }
 
 func (q *QEMU) lookExecutable() bool {
@@ -60,30 +61,39 @@ func (q *QEMU) lookExecutable() bool {
 	return true
 }
 
-func (d *QEMU) Command(opts *driver.CommandOptions) (*exec.Cmd, error) {
+func (q *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{
-		"-accel", d.accelerator, // enable apple hypervisor.framework acceleration
-		"-cpu", d.cpu, // sets the emulated cpu
-		"-device", "qemu-xhci", // adds a PCI bus for USB devices
+		"-accel", q.accelerator, // enable acceleration
+		"-cpu", q.cpu, // sets the emulated cpu
 		"-m", fmt.Sprint(opts.Memory), // sets the memory available
-		"-machine", d.machine, // sets the emulated machine with highmem=off
+		"-machine", q.machine, // sets the emulated machine with highmem=off
 		"-nographic",             // use stdio for the serial input and output
 		"-rtc", "base=localtime", // sync RTC clock with host time
 		"-smp", fmt.Sprint(opts.CPU), // sets the number of CPUs
+		"-device", "qemu-xhci", // adds a bus for USB devices
 	}
 
-	if d.biosPath != "" {
+	if q.bios != "" {
 		// sets the bios
-		cmdArgs = append(cmdArgs, "-bios", d.biosPath)
+		cmdArgs = append(cmdArgs, "-bios", q.bios)
 	}
 
 	for i, disk := range opts.Disks {
 		diskArgs := []string{
-			"-device", fmt.Sprintf("virtio-blk-pci,drive=drive%d", i), // create a virtio PCI block device
+			"-device", fmt.Sprintf("virtio-blk,drive=drive%d", i), // create a virtio PCI block device
 			"-drive", fmt.Sprintf("if=none,media=disk,id=drive%d,file=%s,cache=writethrough", i, disk), // sets the media as disk and load the file
 		}
 
 		cmdArgs = append(cmdArgs, diskArgs...)
+	}
+
+	for i, cdrom := range opts.CDRoms {
+		cdromArgs := []string{
+			"-device", fmt.Sprintf("usb-storage,drive=cdrom%d,removable=true", i), // create a removable USB storage
+			"-drive", fmt.Sprintf("if=none,media=cdrom,id=cdrom%d,file=%s,cache=writethrough", i, cdrom), // sets the media as cdrom and load the ISO file
+		}
+
+		cmdArgs = append(cmdArgs, cdromArgs...)
 	}
 
 	if opts.SSHPortForward != 0 {
@@ -95,17 +105,8 @@ func (d *QEMU) Command(opts *driver.CommandOptions) (*exec.Cmd, error) {
 		cmdArgs = append(cmdArgs, networkArgs...)
 	}
 
-	if opts.CloudInitISO != "" {
-		cloudInitArgs := []string{
-			"-device", "usb-storage,drive=cloud-init,removable=true", // create a removable USB storage
-			"-drive", fmt.Sprintf("if=none,media=cdrom,id=cloud-init,file=%s,cache=writethrough", opts.CloudInitISO), // sets the media as cdrom and load the ISO file
-		}
-
-		cmdArgs = append(cmdArgs, cloudInitArgs...)
-	}
-
 	return exec.Command(
-		d.executableName,
+		q.executableName,
 		cmdArgs...,
 	), nil
 }
@@ -113,34 +114,10 @@ func (d *QEMU) Command(opts *driver.CommandOptions) (*exec.Cmd, error) {
 func New(opts *NewOptions) (*QEMU, error) {
 	qemu := &QEMU{
 		executableName: opts.ExecutableName,
-		writer:         opts.Writer,
 	}
 
 	if !qemu.lookExecutable() {
-		return nil, driver.ErrExecutableNotFound
-	}
-
-	switch {
-	case strings.Contains(qemu.executableName, "aarch64"):
-		if runtime.GOARCH != "arm64" {
-			return nil, driver.ErrUnsupportedArchitecture
-		}
-
-		qemu.biosPath = opts.QEMUEFIBiosPath
-		qemu.cpu = "cortex-a72"
-		qemu.machine = "virt,highmem=off"
-
-	case strings.Contains(qemu.executableName, "x86_64"):
-		if runtime.GOARCH != "amd64" {
-			return nil, driver.ErrUnsupportedArchitecture
-		}
-
-		qemu.biosPath = opts.OVMFBiosPath
-		qemu.cpu = "host"
-		qemu.machine = "q35"
-
-	default:
-		return nil, driver.ErrUnsupportedArchitecture
+		return nil, ErrExecutableNotFound
 	}
 
 	switch runtime.GOOS {
@@ -151,7 +128,29 @@ func New(opts *NewOptions) (*QEMU, error) {
 		qemu.accelerator = "kvm"
 
 	default:
-		return nil, driver.ErrUnsupportedOperatingSystem
+		return nil, ErrUnsupportedOperatingSystem
+	}
+
+	switch {
+	case strings.Contains(qemu.executableName, "aarch64"):
+		if runtime.GOARCH != "arm64" {
+			return nil, ErrARM64Emulation
+		}
+
+		qemu.bios = "edk2-aarch64-code.fd"
+		qemu.cpu = "cortex-a72"
+		qemu.machine = "virt,highmem=off"
+
+	case strings.Contains(qemu.executableName, "x86_64"):
+		if runtime.GOARCH != "amd64" {
+			return nil, ErrX8664Emulation
+		}
+
+		qemu.cpu = "host"
+		qemu.machine = "q35"
+
+	default:
+		return nil, ErrUnsupportedArchitecture
 	}
 
 	return qemu, nil

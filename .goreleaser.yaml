@@ -11,19 +11,6 @@ builds:
     goarch:
       - amd64
       - arm64
-  - id: avfvm
-    binary: avfvm
-    main: ./cmd/avfvm
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-
-archives:
-  - allow_different_binary_count: true
 
 checksum:
   name_template: checksums.txt
@@ -35,7 +22,7 @@ brews:
   - tap:
       owner: adnsio
       name: homebrew-tap
-    description: Spin up Linux VMs with QEMU and Apple virtualization framework
+    description: Spin up Linux VMs with QEMU
     homepage: https://github.com/adnsio/vmkit
     skip_upload: true
     test: |
