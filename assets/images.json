@@ -1,0 +1,48 @@
+{
+  "images": [
+    {
+      "name": "ubuntu-22-04",
+      "description": "Ubuntu 22.04 (Jammy Jellyfish)",
+      "sources": [
+        {
+          "url": "http://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-arm64.img",
+          "checksum": "sha256:0b6561af26f7130a4bd834399e3d8e5e7959b936785440b3ff6d4ae3e84a1c4b",
+          "arch": "arm64"
+        },
+        {
+          "url": "http://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img",
+          "checksum": "sha256:8be55b6b21b0932245e5169fb532dae0e0ff3d541e2866e61ce12e7c38be8315",
+          "arch": "amd64"
+        }
+      ],
+      "ssh": {
+        "username": "ubuntu"
+      },
+      "features": {
+        "cloud-init": true
+      }
+    },
+    {
+      "name": "debian-11",
+      "description": "Debian 11 (Bullseye)",
+      "sources": [
+        {
+          "url": "https://cloud.debian.org/images/cloud/bullseye/20220613-1045/debian-11-generic-arm64-20220613-1045.qcow2",
+          "checksum": "sha512:d260f357b366c1ef9247877554e452ccf57a4b87a99eda8b06945c172dd08accc2338474e4c9926afce992db793da2a0e1cf29404095442adadf26ad6bdbae3b",
+          "arch": "arm64"
+        },
+        {
+          "url": "https://cloud.debian.org/images/cloud/bullseye/20220613-1045/debian-11-generic-amd64-20220613-1045.qcow2",
+          "checksum": "sha512:b90e042b6d1ada948a34fda8fb8ae6d41358f490512f963e9abdd6f7864d97d0394f08a2df974d31df44bd19b84df8a9bfc396d5628ee7b2f695b4565db410e5",
+          "arch": "amd64"
+        }
+      ],
+      "ssh": {
+        "username": "debian"
+      },
+      "features": {
+        "cloud-init": true
+      }
+    }
+  ]
+}

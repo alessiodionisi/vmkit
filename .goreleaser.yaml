@@ -1,38 +1,17 @@
 builds:
-  - goos:
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - arm64
-
-checksum:
-  name_template: checksums.txt
-
-snapshot:
-  name_template: "{{ .ShortCommit }}"
+  - id: vmkit
+    main: ./cmd/vmkit
+    binary: vmkit
+  - id: vmkitd
+    main: ./cmd/vmkitd
+    binary: vmkitd
 
 brews:
   - tap:
       owner: adnsio
       name: homebrew-tap
+    commit_author:
+      name: adnsio
+      email: hello@adns.io
     description: Spin up Linux VMs with QEMU
     homepage: https://github.com/adnsio/vmkit
-    skip_upload: true
-    test: |
-      system "#{bin}/vmkit -h"
-    install: |
-      bin.install "vmkit"
-
-release:
-  github:
-    owner: adnsio
-    name: vmkit
-  disable: true
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"

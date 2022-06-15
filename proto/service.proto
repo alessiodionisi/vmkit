@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "github.com/adnsio/vmkit/proto";
+
+service VMKit {
+  rpc Create (CreateRequest) returns (CreateResponse);
+
+  rpc ListImages (ListImagesRequest) returns (ListImagesResponse);
+}
+
+message CreateRequest {}
+message CreateResponse {}
+
+message ListImagesRequest {}
+message ListImagesResponse {
+  message Image {
+    string name = 1;
+    string description = 2;
+    repeated string archs = 3;
+  }
+
+  repeated Image images = 1;
+}

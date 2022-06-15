@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "vmkitd",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/vmkitd",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "vmkit",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/vmkit",
+      "cwd": "${workspaceFolder}",
+      "args": [""]
+    }
+  ]
+}
