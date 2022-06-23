@@ -6,7 +6,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.0.8
 	github.com/diskfs/go-diskfs v1.2.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.5.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 )
 
