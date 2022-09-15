@@ -50,7 +50,6 @@ func runListImagesCmd(_ listImagesCmdOptions) error {
 			img.Name,
 			img.Description,
 			strings.Join(img.Archs, ", "),
-			"-",
 		}
 	}
 
@@ -59,7 +58,6 @@ func runListImagesCmd(_ listImagesCmdOptions) error {
 			"Name",
 			"Description",
 			"Archs",
-			"Status",
 		},
 		Rows: rows,
 	})

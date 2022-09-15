@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/adnsio/vmkit/engine"
 	"github.com/adnsio/vmkit/proto"
 	"google.golang.org/grpc"
 )
@@ -11,6 +12,7 @@ import (
 type Server struct {
 	listener   net.Listener
 	grpcServer *grpc.Server
+	engine     *engine.Engine
 }
 
 func (s *Server) Close() error {
@@ -39,7 +41,9 @@ func (s *Server) ListenAndServe() error {
 
 	s.grpcServer = grpc.NewServer()
 
-	protoSrv := &protoServer{}
+	protoSrv := &protoServer{
+		engine: s.engine,
+	}
 	proto.RegisterVMKitServer(s.grpcServer, protoSrv)
 
 	if err := s.grpcServer.Serve(s.listener); err != nil {
@@ -49,6 +53,13 @@ func (s *Server) ListenAndServe() error {
 	return nil
 }
 
-func NewServer() *Server {
-	return &Server{}
+func New() (*Server, error) {
+	eng, err := engine.New()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Server{
+		engine: eng,
+	}, nil
 }

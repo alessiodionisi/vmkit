@@ -29,7 +29,10 @@ func newRootCmd() *cobra.Command {
 }
 
 func runRootCmd(_ rootCmdOptions) error {
-	srv := server.NewServer()
+	srv, err := server.New()
+	if err != nil {
+		log.Fatal().Err(err)
+	}
 
 	log.Info().Msg("starting server")
 	go func() {

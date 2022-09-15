@@ -18,8 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VMKitClient interface {
-	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error)
-	ListImages(ctx context.Context, in *ListImagesRequest, opts ...grpc.CallOption) (*ListImagesResponse, error)
+	Apply(ctx context.Context, in *ApplyRequest, opts ...grpc.CallOption) (VMKit_ApplyClient, error)
 }
 
 type vMKitClient struct {
@@ -30,30 +29,43 @@ func NewVMKitClient(cc grpc.ClientConnInterface) VMKitClient {
 	return &vMKitClient{cc}
 }
 
-func (c *vMKitClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error) {
-	out := new(CreateResponse)
-	err := c.cc.Invoke(ctx, "/VMKit/Create", in, out, opts...)
+func (c *vMKitClient) Apply(ctx context.Context, in *ApplyRequest, opts ...grpc.CallOption) (VMKit_ApplyClient, error) {
+	stream, err := c.cc.NewStream(ctx, &VMKit_ServiceDesc.Streams[0], "/VMKit/Apply", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &vMKitApplyClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
 
-func (c *vMKitClient) ListImages(ctx context.Context, in *ListImagesRequest, opts ...grpc.CallOption) (*ListImagesResponse, error) {
-	out := new(ListImagesResponse)
-	err := c.cc.Invoke(ctx, "/VMKit/ListImages", in, out, opts...)
-	if err != nil {
+type VMKit_ApplyClient interface {
+	Recv() (*ApplyResponse, error)
+	grpc.ClientStream
+}
+
+type vMKitApplyClient struct {
+	grpc.ClientStream
+}
+
+func (x *vMKitApplyClient) Recv() (*ApplyResponse, error) {
+	m := new(ApplyResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return m, nil
 }
 
 // VMKitServer is the server API for VMKit service.
 // All implementations must embed UnimplementedVMKitServer
 // for forward compatibility
 type VMKitServer interface {
-	Create(context.Context, *CreateRequest) (*CreateResponse, error)
-	ListImages(context.Context, *ListImagesRequest) (*ListImagesResponse, error)
+	Apply(*ApplyRequest, VMKit_ApplyServer) error
 	mustEmbedUnimplementedVMKitServer()
 }
 
@@ -61,11 +73,8 @@ type VMKitServer interface {
 type UnimplementedVMKitServer struct {
 }
 
-func (UnimplementedVMKitServer) Create(context.Context, *CreateRequest) (*CreateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
-}
-func (UnimplementedVMKitServer) ListImages(context.Context, *ListImagesRequest) (*ListImagesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListImages not implemented")
+func (UnimplementedVMKitServer) Apply(*ApplyRequest, VMKit_ApplyServer) error {
+	return status.Errorf(codes.Unimplemented, "method Apply not implemented")
 }
 func (UnimplementedVMKitServer) mustEmbedUnimplementedVMKitServer() {}
 
@@ -80,40 +89,25 @@ func RegisterVMKitServer(s grpc.ServiceRegistrar, srv VMKitServer) {
 	s.RegisterService(&VMKit_ServiceDesc, srv)
 }
 
-func _VMKit_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _VMKit_Apply_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ApplyRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(VMKitServer).Create(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/VMKit/Create",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VMKitServer).Create(ctx, req.(*CreateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(VMKitServer).Apply(m, &vMKitApplyServer{stream})
 }
 
-func _VMKit_ListImages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListImagesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(VMKitServer).ListImages(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/VMKit/ListImages",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VMKitServer).ListImages(ctx, req.(*ListImagesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+type VMKit_ApplyServer interface {
+	Send(*ApplyResponse) error
+	grpc.ServerStream
+}
+
+type vMKitApplyServer struct {
+	grpc.ServerStream
+}
+
+func (x *vMKitApplyServer) Send(m *ApplyResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 // VMKit_ServiceDesc is the grpc.ServiceDesc for VMKit service.
@@ -122,16 +116,13 @@ func _VMKit_ListImages_Handler(srv interface{}, ctx context.Context, dec func(in
 var VMKit_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "VMKit",
 	HandlerType: (*VMKitServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "Create",
-			Handler:    _VMKit_Create_Handler,
-		},
-		{
-			MethodName: "ListImages",
-			Handler:    _VMKit_ListImages_Handler,
+			StreamName:    "Apply",
+			Handler:       _VMKit_Apply_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/service.proto",
 }

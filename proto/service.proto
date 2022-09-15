@@ -3,21 +3,53 @@ syntax = "proto3";
 option go_package = "github.com/adnsio/vmkit/proto";
 
 service VMKit {
-  rpc Create (CreateRequest) returns (CreateResponse);
+  rpc Apply(ApplyRequest) returns (stream ApplyResponse);
+  // rpc Create(CreateRequest) returns (stream CreateResponse);
+  // rpc List(ListRequest) returns (ListResponse);
 
-  rpc ListImages (ListImagesRequest) returns (ListImagesResponse);
+  // rpc ListImages(ListImagesRequest) returns (ListImagesResponse);
 }
 
-message CreateRequest {}
-message CreateResponse {}
+message ApplyRequest { bytes data = 1; }
+message ApplyResponse { string message = 1; }
 
-message ListImagesRequest {}
-message ListImagesResponse {
-  message Image {
-    string name = 1;
-    string description = 2;
-    repeated string archs = 3;
-  }
+// message CreateRequest {
+//   string name = 1;
+//   string image = 2;
+// }
+// message CreateResponse {
+//   enum Step {
+//     DOWNLOADING_IMAGE = 0;
+//     RESIZING_DISK = 1;
+//     STARTING = 2;
+//   }
 
-  repeated Image images = 1;
-}
+//   message DownloadingImage {
+//     int64 TotalBytes = 1;
+//     int64 DownloadedBytes = 2;
+//   }
+
+//   Step step = 1;
+//   DownloadingImage downloading_image = 2;
+// }
+
+// message ListRequest {}
+// message ListResponse {
+//   message VirtualMachine {
+//     string name = 1;
+//     string status = 2;
+//   }
+
+//   repeated VirtualMachine virtualMachines = 1;
+// }
+
+// message ListImagesRequest {}
+// message ListImagesResponse {
+//   message Image {
+//     string name = 1;
+//     string description = 2;
+//     repeated string archs = 3;
+//   }
+
+//   repeated Image images = 1;
+// }

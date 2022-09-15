@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+
+	"github.com/adnsio/vmkit/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -27,18 +30,34 @@ func newListCmd() *cobra.Command {
 }
 
 func runListCmd(_ listCmdOptions) error {
-	clientConn, _, err := newClient()
+	clientConn, client, err := newClient()
 	if err != nil {
 		return err
 	}
 	defer clientConn.Close()
 
-	// ctx := context.Background()
+	ctx := context.Background()
 
-	// _, err = client.ListImage(ctx, &proto.ListImageRequest{})
-	// if err != nil {
-	// 	return err
-	// }
+	res, err := client.List(ctx, &proto.ListRequest{})
+	if err != nil {
+		return err
+	}
+
+	rows := make([][]string, len(res.VirtualMachines))
+	for i, vm := range res.VirtualMachines {
+		rows[i] = []string{
+			vm.Name,
+			vm.Status,
+		}
+	}
+
+	writeTable(&writeTableOptions{
+		Header: []string{
+			"Name",
+			"Status",
+		},
+		Rows: rows,
+	})
 
 	return nil
 }

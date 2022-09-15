@@ -1,0 +1,64 @@
+apiVersion: v1alpha1
+kind: Disk
+
+metadata:
+  name: debian-11
+
+spec:
+  size: 5Gi
+
+  source:
+    url: https://cloud.debian.org/images/cloud/bullseye/20220613-1045/debian-11-generic-arm64-20220613-1045.raw
+    checksum:
+      algorithm: sha512
+      value: 2e41acc646128bafe9fffc9438f23242ee0eaf85bca1c49e07a430c3c5f608773eb32f01f48374b5e1ae870577dd68cba5772a5c400f3e9a1b9814fa93fcb9a1
+
+---
+apiVersion: v1alpha1
+kind: VirtualMachine
+
+metadata:
+  name: debian-11
+
+spec:
+  hypervisor:
+    type: qemu
+
+  cpu:
+    cpus: 2
+
+  memory:
+    size: 2Gi
+
+  disks:
+    - name: disk1
+      diskRef:
+        name: debian-11
+
+  networks:
+    - {}
+
+  cloudInit:
+    sshAuthorizedKeys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILCzqjVP1Yo9clH/8tZa/jP8vK8x7/QvvOmHgRndZV0B hello@adns.io
+
+    # default user-data generated with sshAuthorizedKeys
+    userData: |
+      #cloud-config
+      ssh_authorized_keys:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILCzqjVP1Yo9clH/8tZa/jP8vK8x7/QvvOmHgRndZV0B hello@adns.io
+
+    # default meta-data with name of virtual machine
+    metaData: |
+      instance-id: debian-11
+      local-hostname: debian-11
+
+    # default network-config to enable dhcp on enp* networks
+    networkConfig: |
+      version: 2
+      ethernets:
+        interface0:
+          match:
+            name: enp*
+          dhcp4: true
+          dhcp6: true
