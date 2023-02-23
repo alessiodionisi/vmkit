@@ -7,7 +7,7 @@ require (
 	github.com/diskfs/go-diskfs v1.2.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.2.1
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/crypto v0.6.0
 )
 
 require (
@@ -25,7 +25,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
-	golang.org/x/sys v0.0.0-20211025112917-711f33c9992c // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
