@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/adnsio/vmkit/cmd"
+	"github.com/alessiodionisi/vmkit/cmd"
 )
 
 func main() {

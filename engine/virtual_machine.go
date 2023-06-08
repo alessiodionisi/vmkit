@@ -17,8 +17,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/adnsio/vmkit/cloudinit"
-	"github.com/adnsio/vmkit/qemu"
+	"github.com/alessiodionisi/vmkit/cloudinit"
+	"github.com/alessiodionisi/vmkit/qemu"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 )
