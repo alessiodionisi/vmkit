@@ -5,8 +5,8 @@ import (
 	"path"
 	"runtime"
 
-	"github.com/adnsio/vmkit/engine"
-	"github.com/adnsio/vmkit/qemu"
+	"github.com/alessiodionisi/vmkit/engine"
+	"github.com/alessiodionisi/vmkit/qemu"
 	"github.com/spf13/cobra"
 )
 

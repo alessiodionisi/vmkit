@@ -10,7 +10,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/adnsio/vmkit/qemu"
+	"github.com/alessiodionisi/vmkit/qemu"
 	"github.com/cheggaaa/pb/v3"
 )
 

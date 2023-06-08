@@ -24,7 +24,7 @@ func NewCloudInitISO(opts *NewCloudInitISOOptions) error {
 		}
 	}
 
-	dfs, err := diskfs.Create(opts.Name, 10*1024*1024, diskfs.Raw)
+	dfs, err := diskfs.Create(opts.Name, 10*1024*1024, diskfs.Raw, diskfs.SectorSizeDefault)
 	if err != nil {
 		return err
 	}

@@ -14,10 +14,10 @@ snapshot:
 
 brews:
   - tap:
-      owner: adnsio
+      owner: alessiodionisi
       name: homebrew-tap
     description: Spin up Linux VMs with QEMU
-    homepage: https://github.com/adnsio/vmkit
+    homepage: https://github.com/alessiodionisi/vmkit
     skip_upload: true
     test: |
       system "#{bin}/vmkit -h"
@@ -26,7 +26,7 @@ brews:
 
 release:
   github:
-    owner: adnsio
+    owner: alessiodionisi
     name: vmkit
   disable: true
 

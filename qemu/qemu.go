@@ -55,6 +55,7 @@ func (q *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 		"-rtc", "base=localtime", // sync RTC clock with host time
 		"-smp", fmt.Sprint(opts.CPU), // sets the number of CPUs
 		"-device", "qemu-xhci", // adds a bus for USB devices
+		"-device", "virtio-rng-pci", // random number generator device
 	}
 
 	if q.bios != "" {
@@ -122,8 +123,8 @@ func New(opts *NewOptions) (*QEMU, error) {
 		}
 
 		qemu.bios = "edk2-aarch64-code.fd"
-		qemu.cpu = "cortex-a72"
-		qemu.machine = "virt,highmem=off"
+		qemu.cpu = "host"
+		qemu.machine = "virt"
 
 	case strings.Contains(qemu.executableName, "x86_64"):
 		if runtime.GOARCH != "amd64" {
