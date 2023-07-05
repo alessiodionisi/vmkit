@@ -10,14 +10,14 @@ import (
 	"github.com/diskfs/go-diskfs/filesystem/iso9660"
 )
 
-type NewCloudInitISOOptions struct {
+type NewOptions struct {
 	MetaData      string
 	Name          string
 	NetworkConfig string
 	UserData      string
 }
 
-func NewCloudInitISO(opts *NewCloudInitISOOptions) error {
+func New(opts NewOptions) error {
 	if err := os.Remove(opts.Name); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return err

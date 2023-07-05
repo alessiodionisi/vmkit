@@ -54,7 +54,7 @@ func runList(opts *globalOptions) error {
 		tableRows = append(tableRows, []string{
 			vm.Name,
 			strings.ToLower(vm.Config.Image),
-			fmt.Sprintf("%d CPU, %d Memory", vm.Config.CPU, vm.Config.Memory),
+			fmt.Sprintf("%d CPU, %d MiB Memory, %d GB Disk", vm.Config.CPU, vm.Config.Memory, vm.Config.DiskSize),
 			strings.Title(string(status)),
 		})
 	}

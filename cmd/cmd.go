@@ -24,7 +24,7 @@ func New() (*cobra.Command, error) {
 
 	// cmd.AddCommand(newLogsCommand())
 	cmd.AddCommand(newCompletionCommand())
-	cmd.AddCommand(newCreateCommand())
+	cmd.AddCommand(newRunCommand())
 	cmd.AddCommand(newExecCommand())
 	cmd.AddCommand(newImagesCommand())
 	cmd.AddCommand(newListCommand())

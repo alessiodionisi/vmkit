@@ -39,14 +39,16 @@ const (
 )
 
 type VirtualMachineConfig struct {
-	CPU    int    `json:"cpu"`
-	Memory int    `json:"memory"`
-	Image  string `json:"image"`
+	CPU      int
+	Memory   int
+	DiskSize int
+	Image    string
+	SSHUser  string
 }
 
 type VirtualMachine struct {
 	Name   string
-	Config *VirtualMachineConfig
+	Config VirtualMachineConfig
 
 	engine *Engine
 	path   string
@@ -149,23 +151,25 @@ func (v *VirtualMachine) Start() error {
 	}
 
 	// use the driver to create the start command
-	cmd, err := v.engine.qemu.Command(&qemu.CommandOptions{
+	cmd, err := v.engine.qemu.Command(qemu.CommandOptions{
 		CPU:            v.Config.CPU,
 		Memory:         v.Config.Memory,
 		SSHPortForward: sshPort,
-
-		Disks: []string{
-			v.diskPath(),
-		},
-		CDRoms: []string{
-			v.cloudInitPath(),
+		Disks: []qemu.CommandOptionsDisk{
+			{
+				Path: v.diskPath(),
+			},
+			{
+				Path:     v.cloudInitPath(),
+				ReadOnly: true,
+			},
 		},
 	})
 	if err != nil {
 		return err
 	}
 
-	v.engine.Printf("Running command: %s\n", strings.Join(cmd.Args, " "))
+	// v.engine.Printf("Running command: %s\n", strings.Join(cmd.Args, " "))
 
 	// start the command
 	if err := cmd.Start(); err != nil {
@@ -202,7 +206,7 @@ func (v *VirtualMachine) loadConfigFile() error {
 		return err
 	}
 
-	return json.Unmarshal(configBytes, v.Config)
+	return json.Unmarshal(configBytes, &v.Config)
 }
 
 func (v *VirtualMachine) sshPort() (int, error) {
@@ -333,7 +337,7 @@ func (v *VirtualMachine) SSHSessionWithXterm() error {
 	}
 
 	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", sshPort), &ssh.ClientConfig{
-		User: "ubuntu",
+		User: v.Config.SSHUser,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(sshSigner),
 		},
@@ -409,7 +413,7 @@ func (v *VirtualMachine) Exec(cmd string) error {
 	}
 
 	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", sshPort), &ssh.ClientConfig{
-		User: "ubuntu",
+		User: v.Config.SSHUser,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(sshSigner),
 		},
@@ -459,7 +463,7 @@ func (v *VirtualMachine) SSHConnectionDetails() (*SSHConnectionDetails, error) {
 	return &SSHConnectionDetails{
 		Host:       "localhost",
 		Port:       sshPort,
-		Username:   "ubuntu",
+		Username:   v.Config.SSHUser,
 		PrivateKey: v.privateKeyPath(),
 	}, nil
 }
@@ -485,29 +489,11 @@ func (e *Engine) ListVirtualMachines() []*VirtualMachine {
 }
 
 // CreateVirtualMachine creates and start a new virtual machine
-func (e *Engine) CreateVirtualMachine(opts *CreateVirtualMachineOptions) (*VirtualMachine, error) {
+func (e *Engine) CreateVirtualMachine(opts CreateVirtualMachineOptions) (*VirtualMachine, error) {
 	// try to find a virtual machine with the same name
 	virtualMachineCheck := e.FindVirtualMachine(opts.Name)
 	if virtualMachineCheck != nil {
 		return nil, ErrVirtualMachineAlreadyExist
-	}
-
-	e.Printf("Creating virtual machine \"%s\" with image \"%s\"\n", opts.Name, opts.Image)
-
-	// get the virtual machine path
-	virtualMachinePath := e.virtualMachinePath(opts.Name)
-
-	// create the virtual machine struct
-	virtualMachine := &VirtualMachine{
-		Name: opts.Name,
-
-		engine: e,
-		path:   virtualMachinePath,
-		Config: &VirtualMachineConfig{
-			CPU:    opts.CPU,
-			Memory: opts.Memory,
-			Image:  opts.Image,
-		},
 	}
 
 	// try to find the image
@@ -531,6 +517,25 @@ func (e *Engine) CreateVirtualMachine(opts *CreateVirtualMachineOptions) (*Virtu
 		}
 	}
 
+	e.Printf("Creating virtual machine \"%s\" with image \"%s\"\n", opts.Name, opts.Image)
+
+	// get the virtual machine path
+	virtualMachinePath := e.virtualMachinePath(opts.Name)
+
+	// create the virtual machine struct
+	virtualMachine := &VirtualMachine{
+		Name:   opts.Name,
+		engine: e,
+		path:   virtualMachinePath,
+		Config: VirtualMachineConfig{
+			CPU:      opts.CPU,
+			Memory:   opts.Memory,
+			Image:    opts.Image,
+			SSHUser:  image.sshUser,
+			DiskSize: opts.DiskSize,
+		},
+	}
+
 	e.Printf("Generating a new SSH key\n")
 
 	// generate a new rsa key for ssh
@@ -545,7 +550,7 @@ func (e *Engine) CreateVirtualMachine(opts *CreateVirtualMachineOptions) (*Virtu
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
 
-	// write the private key to disk
+	// write the private key
 	if err := virtualMachine.writeFilePerm(virtualMachine.privateKeyPath(), privateKeyPEMBytes, 0600); err != nil {
 		return nil, err
 	}
@@ -559,7 +564,7 @@ func (e *Engine) CreateVirtualMachine(opts *CreateVirtualMachineOptions) (*Virtu
 	// marshal the data for ssh authorized keys
 	publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
 
-	// write the public key to disk
+	// write the public key
 	if err := virtualMachine.writeFile(virtualMachine.publicKeyPath(), publicKeyBytes); err != nil {
 		return nil, err
 	}
@@ -576,10 +581,10 @@ ethernets:
     dhcp4: true
     dhcp6: true
 `
-	cloudInitMetaData := fmt.Sprintf("instance-id: %s\nlocal-hostname: %s\n", opts.Name, opts.Name)
+	cloudInitMetaData := fmt.Sprintf("instance-id: %s\nlocal-hostname: %s\n", virtualMachine.Name, virtualMachine.Name)
 
 	// create cloud init iso
-	if err := cloudinit.NewCloudInitISO(&cloudinit.NewCloudInitISOOptions{
+	if err := cloudinit.New(cloudinit.NewOptions{
 		MetaData:      cloudInitMetaData,
 		Name:          virtualMachine.cloudInitPath(),
 		NetworkConfig: cloudInitNetworkConfig,
@@ -609,14 +614,14 @@ ethernets:
 
 	e.Printf("Resizing disk\n")
 
-	// TODO: get disk size from opts
-	resizeCmd := exec.Command("qemu-img", "resize", virtualMachine.diskPath(), "10G")
+	// resize the disk
+	resizeCmd := exec.Command("qemu-img", "resize", virtualMachine.diskPath(), fmt.Sprintf("%dG", virtualMachine.Config.DiskSize))
 
 	if err := resizeCmd.Run(); err != nil {
 		return nil, err
 	}
 
-	// write the config file to disk
+	// write the config file
 	if err := virtualMachine.writeConfigFile(); err != nil {
 		return nil, err
 	}

@@ -7,23 +7,20 @@ import (
 	"runtime"
 )
 
-type imageURLAndChecksum struct {
-	checksum string
-	url      string
-}
-
-type imageArchitecture struct {
-	disk *imageURLAndChecksum
+type ImageArch struct {
+	Checksum string
+	URL      string
 }
 
 type Image struct {
 	Description string
 	Name        string
 	Version     string
+	Archs       map[string]ImageArch
 
-	arch   map[string]*imageArchitecture
-	engine *Engine
-	path   string
+	engine  *Engine
+	path    string
+	sshUser string
 }
 
 func (i *Image) makePath() error {
@@ -53,18 +50,20 @@ func (i *Image) Pull() error {
 		return err
 	}
 
-	arch, exist := i.arch[runtime.GOARCH]
+	arch, exist := i.Archs[runtime.GOARCH]
 	if !exist {
 		return ErrUnsupportedArchitecture
 	}
 
-	if err := i.engine.downloadAndPrintProgress(arch.disk.url, i.diskPath()); err != nil {
+	if err := i.engine.downloadAndPrintProgress(arch.URL, i.diskPath()); err != nil {
 		return err
 	}
 
-	// if err := img.engine.validateChecksum(arch.disk.checksum, img.diskPath()); err != nil {
-	// 	return err
-	// }
+	if arch.Checksum != "" {
+		if err := i.engine.validateChecksum(arch.Checksum, i.diskPath()); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

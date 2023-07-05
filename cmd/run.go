@@ -8,24 +8,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type createOptions struct {
+type runOptions struct {
 	*globalOptions
-	cpu    int
-	image  string
-	memory int
-	name   string
+	cpu      int
+	image    string
+	memory   int
+	name     string
+	diskSize int
 }
 
-func newCreateCommand() *cobra.Command {
+func newRunCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Example: `  Create an Ubuntu Hirsute virtual machine:
-    vmkit create vm1 --image ubuntu:hirsute
+		Example: `  Create and start an Ubuntu Hirsute virtual machine:
+    vmkit run vm1 --image ubuntu:hirsute
 
-  Create a virtual machine with 4 cpus and 4096 megabytes of ram:
-    vmkit create vm1 --image ubuntu:hirsute --cpu 4 --memory 4096`,
+  Create and start a virtual machine with 4 cpus and 4096 megabytes of ram:
+    vmkit run vm1 --image ubuntu:hirsute --cpu 4 --memory 4096`,
 		Args:  cobra.ExactArgs(1),
 		Short: "Create and start a new virtual machine",
-		Use:   "create [name]",
+		Use:   "run [name]",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			globalOptions, err := newGlobalOptions(cmd)
 			if err != nil {
@@ -47,15 +48,21 @@ func newCreateCommand() *cobra.Command {
 				return err
 			}
 
-			opts := &createOptions{
+			diskSize, err := cmd.Flags().GetInt("disk-size")
+			if err != nil {
+				return err
+			}
+
+			opts := runOptions{
 				cpu:           cpu,
 				globalOptions: globalOptions,
 				image:         image,
 				memory:        memory,
 				name:          args[0],
+				diskSize:      diskSize,
 			}
 
-			if err := runCreate(opts); err != nil {
+			if err := runRun(opts); err != nil {
 				fmt.Printf("Error: %s\n", err)
 				os.Exit(1)
 			}
@@ -65,15 +72,16 @@ func newCreateCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringP("image", "i", "", "image to use")
-	cmd.Flags().Int("cpu", 1, "number of cpu(s)")
-	cmd.Flags().Int("memory", 512, "ram in megabytes")
+	cmd.Flags().IntP("cpu", "c", 1, "number of cpu(s)")
+	cmd.Flags().IntP("memory", "m", 512, "ram in mebibytes (MiB)")
+	cmd.Flags().IntP("disk-size", "d", 10, "disk size in gigabytes (GB)")
 
 	cmd.MarkFlagRequired("image")
 
 	return cmd
 }
 
-func runCreate(opts *createOptions) error {
+func runRun(opts runOptions) error {
 	eng, err := newEngine(opts.globalOptions)
 	if err != nil {
 		return err
@@ -82,11 +90,12 @@ func runCreate(opts *createOptions) error {
 		return err
 	}
 
-	vm, err := eng.CreateVirtualMachine(&engine.CreateVirtualMachineOptions{
-		CPU:    opts.cpu,
-		Image:  opts.image,
-		Memory: opts.memory,
-		Name:   opts.name,
+	vm, err := eng.CreateVirtualMachine(engine.CreateVirtualMachineOptions{
+		CPU:      opts.cpu,
+		Image:    opts.image,
+		Memory:   opts.memory,
+		DiskSize: opts.diskSize,
+		Name:     opts.name,
 	})
 	if err != nil {
 		return err

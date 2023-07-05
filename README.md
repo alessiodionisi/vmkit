@@ -2,7 +2,7 @@
 
 Spin up Linux VMs with QEMU.
 
-![Docker running on ARM64 Virtual Machine](/docs/docker-on-vm1.png)
+![Docker running on ARM64 Virtual Machine](/docs/docker.png)
 _In the above image: Docker running on ARM64 Ubuntu Virtual Machine_
 
 ## Getting started
@@ -26,7 +26,7 @@ _TODO: docs coming soon_
 
 ### Requirements
 
-- Go 1.17.x
+- Go 1.20.x
 
 ### How to
 

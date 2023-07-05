@@ -12,10 +12,14 @@ const (
 	X8664ExecutableName   = "qemu-system-x86_64"
 )
 
+type CommandOptionsDisk struct {
+	Path     string
+	ReadOnly bool
+}
+
 type CommandOptions struct {
-	CDRoms         []string
 	CPU            int
-	Disks          []string
+	Disks          []CommandOptionsDisk
 	Memory         int
 	SSHPortForward int
 }
@@ -32,30 +36,18 @@ type QEMU struct {
 	machine        string
 }
 
-func (q *QEMU) lookExecutable() bool {
-	path, err := exec.LookPath(q.executableName)
-	if err != nil {
-		return false
-	}
-
-	if path == "" {
-		return false
-	}
-
-	return true
-}
-
-func (q *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
+func (q *QEMU) Command(opts CommandOptions) (*exec.Cmd, error) {
 	cmdArgs := []string{
-		"-accel", q.accelerator, // enable acceleration
-		"-cpu", q.cpu, // sets the emulated cpu
+		"-machine", q.machine, // sets the machine
 		"-m", fmt.Sprint(opts.Memory), // sets the memory available
-		"-machine", q.machine, // sets the emulated machine with highmem=off
-		"-nographic",             // use stdio for the serial input and output
-		"-rtc", "base=localtime", // sync RTC clock with host time
-		"-smp", fmt.Sprint(opts.CPU), // sets the number of CPUs
-		"-device", "qemu-xhci", // adds a bus for USB devices
+		"-cpu", q.cpu, // sets the cpu
+		"-smp", fmt.Sprint(opts.CPU), // sets the cpu topology
+		"-accel", q.accelerator, // sets the accelerator
 		"-device", "virtio-rng-pci", // random number generator device
+		// "-rtc", "base=localtime", // sync RTC clock with host time
+		"-serial", "mon:stdio", // use stdio for the serial input and output
+		"-display", "none", // disable display
+		"-nodefaults", // remove all defaults
 	}
 
 	if q.bios != "" {
@@ -64,21 +56,36 @@ func (q *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	}
 
 	for i, disk := range opts.Disks {
+		blockDevOptions := []string{
+			fmt.Sprintf("node-name=drive%d", i),
+		}
+
+		if strings.HasSuffix(disk.Path, ".qcow2") {
+			blockDevOptions = append(
+				blockDevOptions,
+				"driver=qcow2",
+				"file.driver=file",
+				fmt.Sprintf("file.filename=%s", disk.Path),
+			)
+		} else {
+			blockDevOptions = append(
+				blockDevOptions,
+				"driver=raw",
+				"file.driver=file",
+				fmt.Sprintf("file.filename=%s", disk.Path),
+			)
+		}
+
+		if disk.ReadOnly {
+			blockDevOptions = append(blockDevOptions, "read-only=on")
+		}
+
 		diskArgs := []string{
 			"-device", fmt.Sprintf("virtio-blk,drive=drive%d", i), // create a virtio PCI block device
-			"-drive", fmt.Sprintf("if=none,media=disk,id=drive%d,file=%s,cache=writethrough", i, disk), // sets the media as disk and load the file
+			"-blockdev", strings.Join(blockDevOptions, ","), // create a blockdev using the PCI block device
 		}
 
 		cmdArgs = append(cmdArgs, diskArgs...)
-	}
-
-	for i, cdrom := range opts.CDRoms {
-		cdromArgs := []string{
-			"-device", fmt.Sprintf("usb-storage,drive=cdrom%d,removable=true", i), // create a removable USB storage
-			"-drive", fmt.Sprintf("if=none,media=cdrom,id=cdrom%d,file=%s,cache=writethrough", i, cdrom), // sets the media as cdrom and load the ISO file
-		}
-
-		cmdArgs = append(cmdArgs, cdromArgs...)
 	}
 
 	if opts.SSHPortForward != 0 {
@@ -96,12 +103,17 @@ func (q *QEMU) Command(opts *CommandOptions) (*exec.Cmd, error) {
 	), nil
 }
 
-func New(opts *NewOptions) (*QEMU, error) {
+func New(opts NewOptions) (*QEMU, error) {
 	qemu := &QEMU{
 		executableName: opts.ExecutableName,
 	}
 
-	if !qemu.lookExecutable() {
+	path, err := exec.LookPath(qemu.executableName)
+	if err != nil {
+		return nil, ErrExecutableNotFound
+	}
+
+	if path == "" {
 		return nil, ErrExecutableNotFound
 	}
 
@@ -124,7 +136,7 @@ func New(opts *NewOptions) (*QEMU, error) {
 
 		qemu.bios = "edk2-aarch64-code.fd"
 		qemu.cpu = "host"
-		qemu.machine = "virt"
+		qemu.machine = "type=virt"
 
 	case strings.Contains(qemu.executableName, "x86_64"):
 		if runtime.GOARCH != "amd64" {
@@ -132,7 +144,7 @@ func New(opts *NewOptions) (*QEMU, error) {
 		}
 
 		qemu.cpu = "host"
-		qemu.machine = "q35"
+		qemu.machine = "type=q35"
 
 	default:
 		return nil, ErrUnsupportedArchitecture

@@ -1,13 +1,14 @@
 package engine
 
 import (
-	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/alessiodionisi/vmkit/qemu"
@@ -21,10 +22,11 @@ type NewOptions struct {
 }
 
 type CreateVirtualMachineOptions struct {
-	CPU    int
-	Image  string
-	Memory int
-	Name   string
+	CPU      int
+	Image    string
+	Memory   int
+	Name     string
+	DiskSize int
 }
 
 type Engine struct {
@@ -49,7 +51,7 @@ func (e *Engine) validateChecksum(checksum string, name string) error {
 		return err
 	}
 
-	fileChecksum := sha256.Sum256(fileBytes)
+	fileChecksum := sha512.Sum512(fileBytes)
 	hexFileChecksum := hex.EncodeToString(fileChecksum[:])
 
 	if checksum != hexFileChecksum {
@@ -126,7 +128,6 @@ func (e *Engine) reloadVirtualMachines() error {
 
 			engine: e,
 			path:   e.virtualMachinePath(vmPath.Name()),
-			Config: &VirtualMachineConfig{},
 		}
 
 		if err := virtualMachines[vmPath.Name()].loadConfigFile(); err != nil {
@@ -141,121 +142,124 @@ func (e *Engine) reloadVirtualMachines() error {
 
 func (e *Engine) reloadImages() error {
 	images := map[string]*Image{
-		"debian:bullseye": {
-			arch: map[string]*imageArchitecture{
+		"debian:bookworm": {
+			Archs: map[string]ImageArch{
 				"arm64": {
-					disk: &imageURLAndChecksum{
-						url: "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-arm64.qcow2",
-					},
+					URL:      "https://cloud.debian.org/images/cloud/bookworm/20230612-1409/debian-12-generic-arm64-20230612-1409.qcow2",
+					Checksum: "a55a6e507c4f1d0dcadb3db056515bea210f0163f3257d7eea94a31d096f708bcfc2db89fb7fd4571b3209aab897550ab10a46505025ed66d2cafe4458407e29",
 				},
 				"amd64": {
-					disk: &imageURLAndChecksum{
-						url: "https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-amd64.qcow2",
-					},
+					URL:      "https://cloud.debian.org/images/cloud/bookworm/20230612-1409/debian-12-generic-amd64-20230612-1409.qcow2",
+					Checksum: "61358292dbec302446a272d5011019091ca78e3fe8878b2d67d31b32e0661306c53a72f793f109394daf937a3db7b2db34422d504e07fdbb300a7bf87109fcf1",
 				},
 			},
-			engine: e,
-			path:   e.imagePath("debian-bullseye"),
+			engine:  e,
+			path:    e.imagePath("debian-bookworm"),
+			sshUser: "debian",
+
+			Description: "Debian 12 (Bookworm)",
+			Name:        "debian",
+			Version:     "bookworm",
+		},
+		"debian:bullseye": {
+			Archs: map[string]ImageArch{
+				"arm64": {
+					URL:      "https://cloud.debian.org/images/cloud/bullseye/20230601-1398/debian-11-generic-arm64-20230601-1398.qcow2",
+					Checksum: "8ae9cd402c612359832e92c3ffdb357472b0b0a1e7e25926d6eb326aabaf77e62e97a5809109a194c5cbbf4952f5dca040c8eb83d3f54e60810cd1e964290dd1",
+				},
+				"amd64": {
+					URL:      "https://cloud.debian.org/images/cloud/bullseye/20230601-1398/debian-11-generic-amd64-20230601-1398.qcow2",
+					Checksum: "9c052590934349dc207b03f77eeef1f32dca77cfedb1e1cbd6f689eaf507fe997104ac132f38e154e0d6d5f8020e1b90953d50fe14a10864b6c4e773fcae2372",
+				},
+			},
+			engine:  e,
+			path:    e.imagePath("debian-bullseye"),
+			sshUser: "debian",
 
 			Description: "Debian 11 (Bullseye)",
 			Name:        "debian",
 			Version:     "bullseye",
 		},
 		"debian:buster": {
-			arch: map[string]*imageArchitecture{
+			Archs: map[string]ImageArch{
 				"arm64": {
-					disk: &imageURLAndChecksum{
-						url: "https://cloud.debian.org/images/cloud/buster/latest/debian-10-generic-arm64.qcow2",
-					},
+					URL: "https://cloud.debian.org/images/cloud/buster/latest/debian-10-generic-arm64.qcow2",
 				},
 				"amd64": {
-					disk: &imageURLAndChecksum{
-						url: "https://cloud.debian.org/images/cloud/buster/latest/debian-10-generic-amd64.qcow2",
-					},
+					URL: "https://cloud.debian.org/images/cloud/buster/latest/debian-10-generic-amd64.qcow2",
 				},
 			},
-			engine: e,
-			path:   e.imagePath("debian-buster"),
+			engine:  e,
+			path:    e.imagePath("debian-buster"),
+			sshUser: "debian",
 
 			Description: "Debian 10 (Buster)",
 			Name:        "debian",
 			Version:     "buster",
 		},
 		"ubuntu:jammy": {
-			arch: map[string]*imageArchitecture{
+			Archs: map[string]ImageArch{
 				"arm64": {
-					disk: &imageURLAndChecksum{
-						url: "http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img",
-					},
+					URL: "http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img",
 				},
 				"amd64": {
-					disk: &imageURLAndChecksum{
-						url: "http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img",
-					},
+					URL: "http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img",
 				},
 			},
-			engine: e,
-			path:   e.imagePath("ubuntu-jammy"),
+			engine:  e,
+			path:    e.imagePath("ubuntu-jammy"),
+			sshUser: "ubuntu",
 
 			Description: "Ubuntu Server 22.04 (Jammy Jellyfish)",
 			Name:        "ubuntu",
 			Version:     "jammy",
 		},
 		"ubuntu:impish": {
-			arch: map[string]*imageArchitecture{
+			Archs: map[string]ImageArch{
 				"arm64": {
-					disk: &imageURLAndChecksum{
-						url: "http://cloud-images.ubuntu.com/impish/current/impish-server-cloudimg-arm64.img",
-					},
+					URL: "http://cloud-images.ubuntu.com/impish/current/impish-server-cloudimg-arm64.img",
 				},
 				"amd64": {
-					disk: &imageURLAndChecksum{
-						url: "http://cloud-images.ubuntu.com/impish/current/impish-server-cloudimg-amd64.img",
-					},
+					URL: "http://cloud-images.ubuntu.com/impish/current/impish-server-cloudimg-amd64.img",
 				},
 			},
-			engine: e,
-			path:   e.imagePath("ubuntu-impish"),
+			engine:  e,
+			path:    e.imagePath("ubuntu-impish"),
+			sshUser: "ubuntu",
 
 			Description: "Ubuntu Server 21.10 (Impish Indri)",
 			Name:        "ubuntu",
 			Version:     "impish",
 		},
 		"ubuntu:hirsute": {
-			arch: map[string]*imageArchitecture{
+			Archs: map[string]ImageArch{
 				"arm64": {
-					disk: &imageURLAndChecksum{
-						url: "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-arm64.img",
-					},
+					URL: "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-arm64.img",
 				},
 				"amd64": {
-					disk: &imageURLAndChecksum{
-						url: "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-amd64.img",
-					},
+					URL: "http://cloud-images.ubuntu.com/hirsute/current/hirsute-server-cloudimg-amd64.img",
 				},
 			},
-			engine: e,
-			path:   e.imagePath("ubuntu-hirsute"),
+			engine:  e,
+			path:    e.imagePath("ubuntu-hirsute"),
+			sshUser: "ubuntu",
 
 			Description: "Ubuntu Server 21.04 (Hirsute Hippo)",
 			Name:        "ubuntu",
 			Version:     "hirsute",
 		},
 		"ubuntu:focal": {
-			arch: map[string]*imageArchitecture{
+			Archs: map[string]ImageArch{
 				"arm64": {
-					disk: &imageURLAndChecksum{
-						url: "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img",
-					},
+					URL: "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img",
 				},
 				"amd64": {
-					disk: &imageURLAndChecksum{
-						url: "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img",
-					},
+					URL: "http://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img",
 				},
 			},
-			engine: e,
-			path:   e.imagePath("ubuntu-focal"),
+			engine:  e,
+			path:    e.imagePath("ubuntu-focal"),
+			sshUser: "ubuntu",
 
 			Description: "Ubuntu Server 20.04 (Focal Fossa) LTS",
 			Name:        "ubuntu",
@@ -263,7 +267,18 @@ func (e *Engine) reloadImages() error {
 		},
 	}
 
-	e.images = images
+	keys := make([]string, 0, len(images))
+	for k := range images {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	sortedImages := make(map[string]*Image, len(images))
+	for _, k := range keys {
+		sortedImages[k] = images[k]
+	}
+
+	e.images = sortedImages
 
 	return nil
 }
@@ -279,7 +294,7 @@ func New(opts *NewOptions) (*Engine, error) {
 	}
 
 	var err error
-	engine.qemu, err = qemu.New(&qemu.NewOptions{
+	engine.qemu, err = qemu.New(qemu.NewOptions{
 		ExecutableName: opts.QEMUExecutableName,
 	})
 	if err != nil {
