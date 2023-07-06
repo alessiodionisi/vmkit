@@ -39,11 +39,13 @@ const (
 )
 
 type VirtualMachineConfig struct {
-	CPU      int
-	Memory   int
-	DiskSize int
-	Image    string
-	SSHUser  string
+	CPU          int
+	Memory       int
+	DiskSize     int
+	Image        string
+	SSHUser      string
+	MacAddress   string
+	PortForwards map[string]string
 }
 
 type VirtualMachine struct {
@@ -76,10 +78,6 @@ func (v *VirtualMachine) writeFilePerm(name string, bytes []byte, perm os.FileMo
 
 func (v *VirtualMachine) pidPath() string {
 	return path.Join(v.path, "pid")
-}
-
-func (v *VirtualMachine) sshPortPath() string {
-	return path.Join(v.path, "ssh-port")
 }
 
 func (v *VirtualMachine) diskPath() string {
@@ -136,25 +134,11 @@ func (v *VirtualMachine) Start() error {
 		return ErrVirtualMachineAlreadyRunning
 	}
 
-	// start a tcp listener to find an unused port
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		return err
-	}
-
-	// get the assigned port
-	sshPort := listener.Addr().(*net.TCPAddr).Port
-
-	// stop the tcp lister
-	if err := listener.Close(); err != nil {
-		return err
-	}
-
 	// use the driver to create the start command
 	cmd, err := v.engine.qemu.Command(qemu.CommandOptions{
-		CPU:            v.Config.CPU,
-		Memory:         v.Config.Memory,
-		SSHPortForward: sshPort,
+		CPU:        v.Config.CPU,
+		Memory:     v.Config.Memory,
+		MACAddress: v.Config.MacAddress,
 		Disks: []qemu.CommandOptionsDisk{
 			{
 				Path: v.diskPath(),
@@ -164,12 +148,13 @@ func (v *VirtualMachine) Start() error {
 				ReadOnly: true,
 			},
 		},
+		PortForwards: v.Config.PortForwards,
 	})
 	if err != nil {
 		return err
 	}
 
-	// v.engine.Printf("Running command: %s\n", strings.Join(cmd.Args, " "))
+	v.engine.Printf("Running command: %s\n", strings.Join(cmd.Args, " "))
 
 	// start the command
 	if err := cmd.Start(); err != nil {
@@ -178,11 +163,6 @@ func (v *VirtualMachine) Start() error {
 
 	// write the process id to disk
 	if err := v.writeFile(v.pidPath(), []byte(strconv.Itoa(cmd.Process.Pid))); err != nil {
-		return err
-	}
-
-	// write the ssh port to disk
-	if err := v.writeFile(v.sshPortPath(), []byte(strconv.Itoa(sshPort))); err != nil {
 		return err
 	}
 
@@ -207,24 +187,6 @@ func (v *VirtualMachine) loadConfigFile() error {
 	}
 
 	return json.Unmarshal(configBytes, &v.Config)
-}
-
-func (v *VirtualMachine) sshPort() (int, error) {
-	sshPortFileBytes, err := os.ReadFile(v.sshPortPath())
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return 0, nil
-		}
-
-		return 0, err
-	}
-
-	sshPort, err := strconv.Atoi(strings.ReplaceAll(string(sshPortFileBytes), "\n", ""))
-	if err != nil {
-		return 0, err
-	}
-
-	return sshPort, nil
 }
 
 // findProcess returns the running process if exist
@@ -276,10 +238,6 @@ func (v *VirtualMachine) Stop() error {
 		return err
 	}
 
-	if err := os.Remove(v.sshPortPath()); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -317,12 +275,8 @@ func (v *VirtualMachine) SSHSessionWithXterm() error {
 
 	v.engine.Printf("Connecting to virtual machine \"%s\" via SSH\n", v.Name)
 
-	sshPort, err := v.sshPort()
-	if err != nil {
-		return err
-	}
-
-	if sshPort == 0 {
+	sshPort, exist := v.Config.PortForwards["22"]
+	if !exist || sshPort == "" {
 		return ErrInvalidSSHPort
 	}
 
@@ -393,12 +347,8 @@ func (v *VirtualMachine) Exec(cmd string) error {
 		return ErrVirtualMachineNotRunning
 	}
 
-	sshPort, err := v.sshPort()
-	if err != nil {
-		return err
-	}
-
-	if sshPort == 0 {
+	sshPort, exist := v.Config.PortForwards["22"]
+	if !exist || sshPort == "" {
 		return ErrInvalidSSHPort
 	}
 
@@ -451,18 +401,19 @@ func (v *VirtualMachine) SSHConnectionDetails() (*SSHConnectionDetails, error) {
 		return nil, ErrVirtualMachineNotRunning
 	}
 
-	sshPort, err := v.sshPort()
-	if err != nil {
-		return nil, err
+	sshPort, exist := v.Config.PortForwards["22"]
+	if !exist || sshPort == "" {
+		return nil, ErrInvalidSSHPort
 	}
 
-	if sshPort == 0 {
+	sshPortI, err := strconv.Atoi(sshPort)
+	if err != nil {
 		return nil, ErrInvalidSSHPort
 	}
 
 	return &SSHConnectionDetails{
 		Host:       "localhost",
-		Port:       sshPort,
+		Port:       sshPortI,
 		Username:   v.Config.SSHUser,
 		PrivateKey: v.privateKeyPath(),
 	}, nil
@@ -519,6 +470,34 @@ func (e *Engine) CreateVirtualMachine(opts CreateVirtualMachineOptions) (*Virtua
 
 	e.Printf("Creating virtual machine \"%s\" with image \"%s\"\n", opts.Name, opts.Image)
 
+	macAddress, err := e.RandomLocallyAdministeredMacAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	e.Printf("Using %s as MAC address\n", macAddress)
+
+	sshPort, exist := opts.PortForwards["22"]
+	if !exist || sshPort == "" {
+		// start a tcp listener to find an unused port
+		listener, err := net.Listen("tcp", ":0")
+		if err != nil {
+			return nil, err
+		}
+
+		// get the assigned port
+		sshPortI := listener.Addr().(*net.TCPAddr).Port
+
+		// stop the tcp lister
+		if err := listener.Close(); err != nil {
+			return nil, err
+		}
+
+		opts.PortForwards["22"] = strconv.Itoa(sshPortI)
+	}
+
+	e.Printf("Using %d as SSH port forward\n", opts.PortForwards["22"])
+
 	// get the virtual machine path
 	virtualMachinePath := e.virtualMachinePath(opts.Name)
 
@@ -528,11 +507,13 @@ func (e *Engine) CreateVirtualMachine(opts CreateVirtualMachineOptions) (*Virtua
 		engine: e,
 		path:   virtualMachinePath,
 		Config: VirtualMachineConfig{
-			CPU:      opts.CPU,
-			Memory:   opts.Memory,
-			Image:    opts.Image,
-			SSHUser:  image.sshUser,
-			DiskSize: opts.DiskSize,
+			CPU:          opts.CPU,
+			Memory:       opts.Memory,
+			Image:        opts.Image,
+			SSHUser:      image.sshUser,
+			DiskSize:     opts.DiskSize,
+			MacAddress:   macAddress,
+			PortForwards: opts.PortForwards,
 		},
 	}
 
@@ -572,7 +553,7 @@ func (e *Engine) CreateVirtualMachine(opts CreateVirtualMachineOptions) (*Virtua
 	e.Printf("Creating cloud-init ISO\n")
 
 	// create cloud init data
-	cloudInitUserData := fmt.Sprintf("#cloud-config\n\nssh_authorized_keys:\n  - %s", string(publicKeyBytes))
+	cloudInitUserData := fmt.Sprintf("#cloud-config\n\npassword: password\nchpasswd: { expire: False }\nssh_pwauth: True\nssh_authorized_keys:\n  - %s", string(publicKeyBytes))
 	cloudInitNetworkConfig := `version: 2
 ethernets:
   interface0:

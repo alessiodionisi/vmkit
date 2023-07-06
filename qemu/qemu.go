@@ -18,10 +18,11 @@ type CommandOptionsDisk struct {
 }
 
 type CommandOptions struct {
-	CPU            int
-	Disks          []CommandOptionsDisk
-	Memory         int
-	SSHPortForward int
+	CPU          int
+	Disks        []CommandOptionsDisk
+	Memory       int
+	MACAddress   string
+	PortForwards map[string]string
 }
 
 type NewOptions struct {
@@ -88,14 +89,25 @@ func (q *QEMU) Command(opts CommandOptions) (*exec.Cmd, error) {
 		cmdArgs = append(cmdArgs, diskArgs...)
 	}
 
-	if opts.SSHPortForward != 0 {
-		networkArgs := []string{
-			"-device", "virtio-net-pci,netdev=netdev0", // create a virtio PCI network device
-			"-netdev", fmt.Sprintf("user,id=netdev0,hostfwd=tcp::%d-:22", opts.SSHPortForward), // configure port forwarding
-		}
-
-		cmdArgs = append(cmdArgs, networkArgs...)
+	networkArgs := []string{
+		"-device", fmt.Sprintf("virtio-net-pci,mac=%s,netdev=netdev0", opts.MACAddress), // create a virtio PCI network device
 	}
+
+	// configure netdev options
+	netdevOptions := []string{
+		"user",
+		"id=netdev0",
+	}
+
+	// configure ports forwarding
+	for vmPort, hostPort := range opts.PortForwards {
+		netdevOptions = append(netdevOptions, fmt.Sprintf("hostfwd=tcp:127.0.0.1:%s-:%s", hostPort, vmPort))
+	}
+
+	// configure netdev
+	networkArgs = append(networkArgs, "-netdev", strings.Join(netdevOptions, ","))
+
+	cmdArgs = append(cmdArgs, networkArgs...)
 
 	return exec.Command(
 		q.executableName,

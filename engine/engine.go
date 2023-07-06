@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"crypto/rand"
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
@@ -22,11 +23,12 @@ type NewOptions struct {
 }
 
 type CreateVirtualMachineOptions struct {
-	CPU      int
-	Image    string
-	Memory   int
-	Name     string
-	DiskSize int
+	CPU          int
+	Image        string
+	Memory       int
+	Name         string
+	DiskSize     int
+	PortForwards map[string]string
 }
 
 type Engine struct {
@@ -142,6 +144,23 @@ func (e *Engine) reloadVirtualMachines() error {
 
 func (e *Engine) reloadImages() error {
 	images := map[string]*Image{
+		"fedora:38": {
+			Archs: map[string]ImageArch{
+				"arm64": {
+					URL: "https://download.fedoraproject.org/pub/fedora/linux/releases/38/Cloud/aarch64/images/Fedora-Cloud-Base-38-1.6.aarch64.qcow2",
+				},
+				"amd64": {
+					URL: "https://download.fedoraproject.org/pub/fedora/linux/releases/38/Cloud/x86_64/images/Fedora-Cloud-Base-38-1.6.x86_64.qcow2",
+				},
+			},
+			engine:  e,
+			path:    e.imagePath("fedora-38"),
+			sshUser: "fedora",
+
+			Description: "Fedora 38",
+			Name:        "fedora",
+			Version:     "38",
+		},
 		"debian:bookworm": {
 			Archs: map[string]ImageArch{
 				"arm64": {
@@ -285,6 +304,18 @@ func (e *Engine) reloadImages() error {
 
 func (e *Engine) Printf(format string, a ...interface{}) (n int, err error) {
 	return fmt.Fprintf(e.writer, format, a...)
+}
+
+func (e *Engine) RandomLocallyAdministeredMacAddress() (string, error) {
+	buf := make([]byte, 6)
+
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+
+	buf[0] = (buf[0] | 2) & 0xfe
+
+	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]), nil
 }
 
 func New(opts *NewOptions) (*Engine, error) {

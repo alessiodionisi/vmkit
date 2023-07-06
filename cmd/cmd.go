@@ -34,7 +34,8 @@ func New() (*cobra.Command, error) {
 	cmd.AddCommand(newSSHCommand())
 	cmd.AddCommand(newStartCommand())
 	cmd.AddCommand(newStopCommand())
-	cmd.AddCommand(newXtermCommand())
+	// cmd.AddCommand(newXtermCommand())
+	cmd.AddCommand(newMacAddressCommand())
 
 	homePath, err := os.UserHomeDir()
 	if err != nil {

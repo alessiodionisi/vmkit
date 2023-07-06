@@ -51,10 +51,17 @@ func runList(opts *globalOptions) error {
 			return err
 		}
 
+		portForwards := []string{}
+
+		for vmPort, hostPort := range vm.Config.PortForwards {
+			portForwards = append(portForwards, fmt.Sprintf("%s-%s", hostPort, vmPort))
+		}
+
 		tableRows = append(tableRows, []string{
 			vm.Name,
 			strings.ToLower(vm.Config.Image),
 			fmt.Sprintf("%d CPU, %d MiB Memory, %d GB Disk", vm.Config.CPU, vm.Config.Memory, vm.Config.DiskSize),
+			strings.Join(portForwards, ","),
 			strings.Title(string(status)),
 		})
 	}
@@ -65,6 +72,7 @@ func runList(opts *globalOptions) error {
 			"Name",
 			"Image",
 			"Resources",
+			"Port forwards",
 			"Status",
 		},
 		rows: tableRows,
