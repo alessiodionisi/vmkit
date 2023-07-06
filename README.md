@@ -8,7 +8,7 @@ _In the above image: Docker running on ARM64 Ubuntu Virtual Machine._
 ## Requirements
 
 - Linux, macOS or Windows (needs testing) host OS.
-- [QEMU](https://www.qemu.org) installed and available in the system, you can install it with homebrew or your package manager of choice. VMKit uses `qemu-img` binary, `qemu-system-aarch64` binary on ARM64 and `qemu-system-x86_64` binary on AMD64.
+- [QEMU](https://www.qemu.org) installed and available in the image, you can install it with homebrew or your package manager of choice. VMKit uses `qemu-img` binary, `qemu-system-aarch64` binary on ARM64 and `qemu-system-x86_64` binary on AMD64.
 
 ## Getting started
 
