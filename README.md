@@ -28,6 +28,28 @@ Create a Debian 12 (Bookworm) virtual machine with 4 CPUs, 4096 mebibytes of ram
 vmkit run debian12 -i debian:bookworm -c 4 -m 4096 -d 20
 ```
 
+### Run a command in the virtual machine
+
+Run `uname -a` inside the virtual machine by running this command:
+
+```shell
+vmkit exec debian12 -- uname -a
+```
+
+### Connect to the virtual machine via SSH
+
+You can get SSH parameters by running this command:
+
+```shell
+vmkit ssh debian12
+```
+
+On Unix systems you can quickly connect via SSH by running this command:
+
+```shell
+$(vmkit ssh debian12 --command)
+```
+
 ## Commands
 
 ### Create a virtual machines (`vmkit run`)

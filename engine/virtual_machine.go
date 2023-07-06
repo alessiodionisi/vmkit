@@ -290,7 +290,7 @@ func (v *VirtualMachine) SSHSessionWithXterm() error {
 		return err
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", sshPort), &ssh.ClientConfig{
+	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%s", sshPort), &ssh.ClientConfig{
 		User: v.Config.SSHUser,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(sshSigner),
@@ -362,7 +362,7 @@ func (v *VirtualMachine) Exec(cmd string) error {
 		return err
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", sshPort), &ssh.ClientConfig{
+	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%s", sshPort), &ssh.ClientConfig{
 		User: v.Config.SSHUser,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(sshSigner),
@@ -496,7 +496,7 @@ func (e *Engine) CreateVirtualMachine(opts CreateVirtualMachineOptions) (*Virtua
 		opts.PortForwards["22"] = strconv.Itoa(sshPortI)
 	}
 
-	e.Printf("Using %d as SSH port forward\n", opts.PortForwards["22"])
+	e.Printf("Using %s as SSH port forward\n", opts.PortForwards["22"])
 
 	// get the virtual machine path
 	virtualMachinePath := e.virtualMachinePath(opts.Name)
