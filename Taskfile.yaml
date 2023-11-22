@@ -6,3 +6,14 @@ tasks:
       - go build .
     generates:
       - vmkit
+
+  proto:
+    cmds:
+      - protoc
+        --proto_path=proto
+        --go_out=proto --go_opt=paths=source_relative
+        --go-grpc_out=proto --go-grpc_opt=paths=source_relative
+        proto/*.proto
+    generates:
+      - proto/*.pb.go
+      - proto/*_grpc.pb.go
