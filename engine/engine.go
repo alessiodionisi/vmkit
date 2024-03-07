@@ -3,7 +3,7 @@ package engine
 import (
 	"errors"
 	"fmt"
-	"log/slog"
+	"io"
 	"os"
 	"path"
 
@@ -12,78 +12,30 @@ import (
 
 // Engine is the main engine of VMKit.
 type Engine struct {
-	logger     *slog.Logger
-	vmkitDir   string
-	disksDir   string
-	disks      map[string]*Disk
-	qemuCmd    *qemu.QEMUCmd
-	qemuImgCmd *qemu.QEMUImgCmd
+	dataDir     string
+	debug       bool
+	images      map[string]*Image
+	instanceDir string
+	instances   map[string]*Instance
+	logWriter   io.Writer
+	qemuCmd     *qemu.QEMUCmd
+	qemuImg     *qemu.QEMUImg
+	volumeDir   string
+	volumes     map[string]*Volume
 }
 
-// Apply applies resource configurations.
-// messageChan is used to receive messages about the status of the operation.
-// func (e *Engine) Apply(messageChan chan<- string, data []byte) error {
-// 	e.logger.Debug("applying resource configurations")
-
-// 	dataParts := bytes.Split(data, []byte("---\n"))
-// 	for _, dataPart := range dataParts {
-// 		var parsedResource api.APIVersionAndKind
-// 		if err := yaml.Unmarshal(dataPart, &parsedResource); err != nil {
-// 			return fmt.Errorf("error unmarshalling resource: %w", err)
-// 		}
-
-// 		nAPIVersion := api.NormalizeAPIVersion(parsedResource.APIVersion)
-// 		nKind := api.NormalizeKind(parsedResource.Kind)
-
-// 		e.logger.Debug("applying resource", "api-version", nAPIVersion, "kind", nKind)
-
-// 		switch nKind {
-// 		case api.KindDisk:
-// 			var parsedDisk v1beta1.Disk
-// 			if err := yaml.Unmarshal(dataPart, &parsedDisk); err != nil {
-// 				return fmt.Errorf("error unmarshalling disk: %w", err)
-// 			}
-
-// 			created, err := e.ApplyDisk(&parsedDisk)
-// 			if err != nil {
-// 				messageChan <- err.Error()
-// 				continue
-// 			}
-
-// 			if created {
-// 				messageChan <- fmt.Sprintf("%s/%s created", nKind, nAPIVersion)
-// 				continue
-// 			}
-
-// 			messageChan <- fmt.Sprintf("%s/%s applied", nKind, nAPIVersion)
-
-// 		default:
-// 			messageChan <- fmt.Sprintf("unknow %s kind version %s", nKind, nAPIVersion)
-// 		}
-// 	}
-
-// 	e.logger.Debug("resource configurations applied")
-
-// 	close(messageChan)
-
-// 	return nil
-// }
+type NewOptions struct {
+	DataDir   string
+	Debug     bool
+	LogWriter io.Writer
+}
 
 // New creates a new Engine.
-func New(
-	logger *slog.Logger,
-	vmkitDir string,
-) (*Engine, error) {
-	disksDir := path.Join(vmkitDir, "disks")
-	if _, err := os.Stat(disksDir); errors.Is(err, os.ErrNotExist) {
-		logger.Debug("creating disks directory", "path", disksDir)
+func New(opts NewOptions) (*Engine, error) {
+	volumeDir := path.Join(opts.DataDir, "volume")
+	instanceDir := path.Join(opts.DataDir, "instance")
 
-		if err := os.Mkdir(disksDir, 0755); err != nil {
-			return nil, fmt.Errorf("error creating disks directory: %w", err)
-		}
-	}
-
-	qemuImgCmd, err := qemu.NewQEMUImgCmd("qemu-img")
+	qemuImgCmd, err := qemu.NewQEMUImg("qemu-img", opts.LogWriter, opts.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("error creating qemu-img cmd: %w", err)
 	}
@@ -93,12 +45,54 @@ func New(
 		return nil, fmt.Errorf("error creating qemu cmd: %w", err)
 	}
 
-	return &Engine{
-		logger:     logger,
-		vmkitDir:   vmkitDir,
-		disksDir:   disksDir,
-		disks:      make(map[string]*Disk),
-		qemuImgCmd: qemuImgCmd,
-		qemuCmd:    qemuCmd,
-	}, nil
+	e := &Engine{
+		dataDir:     opts.DataDir,
+		debug:       opts.Debug,
+		images:      make(map[string]*Image),
+		instanceDir: instanceDir,
+		instances:   make(map[string]*Instance),
+		logWriter:   opts.LogWriter,
+		qemuCmd:     qemuCmd,
+		qemuImg:     qemuImgCmd,
+		volumeDir:   volumeDir,
+		volumes:     make(map[string]*Volume),
+	}
+
+	if _, err := os.Stat(e.dataDir); errors.Is(err, os.ErrNotExist) {
+		e.logDebug(`Creating data directory "%s"...`, e.dataDir)
+
+		if err := os.Mkdir(e.dataDir, 0755); err != nil {
+			return nil, fmt.Errorf("error creating data directory: %w", err)
+		}
+	}
+
+	if _, err := os.Stat(e.volumeDir); errors.Is(err, os.ErrNotExist) {
+		e.logDebug(`Creating volume directory "%s"...`, e.volumeDir)
+
+		if err := os.Mkdir(e.volumeDir, 0755); err != nil {
+			return nil, fmt.Errorf("error creating volume directory: %w", err)
+		}
+	}
+
+	if _, err := os.Stat(e.instanceDir); errors.Is(err, os.ErrNotExist) {
+		e.logDebug(`Creating instance directory "%s"...`, e.instanceDir)
+
+		if err := os.Mkdir(e.instanceDir, 0755); err != nil {
+			return nil, fmt.Errorf("error creating instance directory: %w", err)
+		}
+	}
+
+	if err := e.reloadImages(); err != nil {
+		return nil, fmt.Errorf("error reloading images: %w", err)
+	}
+
+	if err := e.reloadVolumes(); err != nil {
+		return nil, fmt.Errorf("error reloading volumes: %w", err)
+	}
+
+	if err := e.reloadInstances(); err != nil {
+		return nil, fmt.Errorf("error reloading instances: %w", err)
+	}
+
+	return e, nil
 }
