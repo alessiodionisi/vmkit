@@ -1,11 +1,17 @@
 package engine
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+
+	"golang.org/x/crypto/ssh"
 )
 
 type InstanceState uint
@@ -213,6 +219,35 @@ func (e *Engine) CreateInstance(opts *CreateInstanceOptions) (*Instance, error) 
 	if err := vol.Attach(ins.Name); err != nil {
 		return nil, err
 	}
+
+	e.logDebug("Generating SSH key for instance %s...", ins.Name)
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return nil, err
+	}
+
+	privateKeyPEMBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	})
+
+	sshPublicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	publicKeyBytes := ssh.MarshalAuthorizedKey(sshPublicKey)
+
+	if err := os.WriteFile(filepath.Join(ins.dir, "key.pem"), privateKeyPEMBytes, 0644); err != nil {
+		return nil, fmt.Errorf("error writing private key: %w", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(ins.dir, "key.pub"), publicKeyBytes, 0644); err != nil {
+		return nil, fmt.Errorf("error writing public key: %w", err)
+	}
+
+	e.logDebug("SSH key for instance %s generated", ins.Name)
 
 	e.log("Instance %s created", ins.Name)
 

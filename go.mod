@@ -6,6 +6,7 @@ require (
 	github.com/diskfs/go-diskfs v1.4.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.8.0
+	golang.org/x/crypto v0.21.0
 )
 
 require (
@@ -18,6 +19,6 @@ require (
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
-	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
