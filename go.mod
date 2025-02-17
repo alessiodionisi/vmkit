@@ -6,7 +6,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.4
 	github.com/diskfs/go-diskfs v1.4.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.9.1
 	golang.org/x/crypto v0.13.0
 )
 
@@ -23,7 +23,7 @@ require (
 	github.com/pkg/xattr v0.4.9 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
