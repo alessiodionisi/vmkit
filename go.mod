@@ -1,13 +1,14 @@
 module github.com/alessiodionisi/vmkit
 
 go 1.21
+toolchain go1.23.6
 
 require (
 	github.com/cheggaaa/pb/v3 v3.1.4
 	github.com/diskfs/go-diskfs v1.4.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.7.0
-	golang.org/x/crypto v0.13.0
+	golang.org/x/crypto v0.35.0
 )
 
 require (
@@ -25,7 +26,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
-	golang.org/x/sys v0.12.0 // indirect
-	golang.org/x/term v0.12.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	gopkg.in/djherbis/times.v1 v1.3.0 // indirect
 )
